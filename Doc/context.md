@@ -109,17 +109,17 @@ TwinSync/
 
 ---
 
-## Tech Stack (Planned — Not Yet Finalized)
+## Tech Stack (Finalized)
 
-| Layer | Candidates | Status |
+| Layer | Selection | Status |
 |---|---|---|
-| Frontend | TBD (React/Next.js or plain HTML/JS) | ❌ Not started |
-| Backend | TBD (Node.js/Express or Python/FastAPI) | ❌ Not started |
-| Database | PostgreSQL (relational, JSONB support for timetables) | ✅ Schema designed |
-| Real-Time Chat | WebSockets (Socket.io or similar) | ❌ Not started |
-| AI/LLM | Gemini API or OpenAI API | ❌ Not started |
-| SMS/Email | Twilio / SendGrid | ❌ Not started |
-| Cache | Redis (sessions, online status) | ❌ Not started |
+| Frontend | React.js (via Vite) | ⏳ Pending setup |
+| Backend | Node.js (with Express) | ⏳ Pending setup |
+| Database / Auth | Supabase (PostgreSQL under the hood) | ⏳ Pending setup |
+| Real-Time Chat | Supabase Realtime / WebSockets | ⏳ Pending setup |
+| AI/LLM | TBD (Gemini or OpenAI) | ❌ Not started |
+| SMS/Email | TBD (Twilio / SendGrid) | ❌ Not started |
+| Cache | Not needed immediately (Supabase handles much of this) | ➖ |
 
 ---
 
