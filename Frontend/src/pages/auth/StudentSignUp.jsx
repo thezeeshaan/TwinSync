@@ -147,11 +147,16 @@ function StudentSignUp() {
   if (!user) {
     return (
       <Container className="full-height" style={{ padding: '4rem 1rem' }}>
-        <div className="auth-card" style={{ maxWidth: '480px' }}>
-          <h1 className="auth-header">
+        <div className="auth-card" style={{ maxWidth: '480px', position: 'relative' }}>
+          
+          <Link to="/" style={{ position: 'absolute', top: '1.5rem', left: '1.5rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '5px', textDecoration: 'none', fontWeight: 'bold' }}>
+            <Icon name="arrow left" /> Back
+          </Link>
+
+          <h1 className="auth-header" style={{ marginTop: '1rem' }}>
             Student Registration
           </h1>
-          <p className="auth-subheader">Sign up securely with your Google account.</p>
+          <p className="auth-subheader">Step 1: Link your Google account securely.</p>
           
           <Button 
             color='google plus' 
@@ -159,9 +164,10 @@ function StudentSignUp() {
             size='large' 
             onClick={handleGoogleSignUp}
             loading={loading}
-            style={{ padding: '1.2rem', fontSize: '1.1rem', borderRadius: '12px' }}
+            disabled={loading}
+            style={{ marginBottom: '1.5rem', padding: '1.2rem', fontSize: '1.1rem', borderRadius: '12px' }}
           >
-            <Icon name='google' /> Sign up with Google
+            <Icon name='google' /> Link Google Account (Step 1)
           </Button>
           
           {error && <Message error content={error} style={{ marginTop: '1rem' }} />}

@@ -5,7 +5,7 @@ import { supabase } from '../config/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 
 function Navbar() {
-  const { profile } = useAuth();
+  const { profile, role } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -20,6 +20,26 @@ function Navbar() {
   }, []);
 
   const handleLogout = async () => {
+    // Auto-toggle counselor to inactive on logout
+    if (role === 'counselor') {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+          await fetch(`${API_URL}/api/counselor/availability`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({ is_available: false })
+          });
+        }
+      } catch (e) {
+        console.error("Auto-toggle off failed:", e);
+      }
+    }
+
     await supabase.auth.signOut();
     navigate('/login');
   };
@@ -49,10 +69,19 @@ function Navbar() {
             boxShadow: '0 10px 15px rgba(0,0,0,0.2)'
           }}>
             <Menu inverted color="teal" vertical fluid borderless style={{ margin: 0, borderRadius: 0 }}>
-              <Menu.Item as={Link} to="/dashboard" active={location.pathname === '/dashboard'} name="Check In" onClick={toggleMobileMenu} />
-              <Menu.Item as={Link} to="/insights" active={location.pathname === '/insights'} name="Insights" onClick={toggleMobileMenu} />
-              <Menu.Item as={Link} to="/counselor" active={location.pathname === '/counselor'} name="Counselor" onClick={toggleMobileMenu} />
-              <Menu.Item as={Link} to="/community" active={location.pathname === '/community'} name="Community" onClick={toggleMobileMenu} />
+              {role !== 'counselor' && (
+                <>
+                  <Menu.Item as={Link} to="/dashboard" active={location.pathname === '/dashboard'} name="Check In" onClick={toggleMobileMenu} />
+                  <Menu.Item as={Link} to="/insights" active={location.pathname === '/insights'} name="Insights" onClick={toggleMobileMenu} />
+                  <Menu.Item as={Link} to="/counselor" active={location.pathname === '/counselor'} name="Counselor" onClick={toggleMobileMenu} />
+                  <Menu.Item as={Link} to="/community" active={location.pathname === '/community'} name="Community" onClick={toggleMobileMenu} />
+                </>
+              )}
+              {role === 'admin' && (
+                <Menu.Item as={Link} to="/admin" active={location.pathname === '/admin'} onClick={toggleMobileMenu}>
+                  <Icon name="shield" /> Admin
+                </Menu.Item>
+              )}
               <Menu.Item>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>
@@ -80,11 +109,20 @@ function Navbar() {
           TwinSync
         </Menu.Item>
 
-        {/* Center: 4 Pillars */}
-        <Menu.Item as={Link} to="/dashboard" active={location.pathname === '/dashboard'} name="Check In" />
-        <Menu.Item as={Link} to="/insights" active={location.pathname === '/insights'} name="Insights" />
-        <Menu.Item as={Link} to="/counselor" active={location.pathname === '/counselor'} name="Counselor" />
-        <Menu.Item as={Link} to="/community" active={location.pathname === '/community'} name="Community" />
+        {/* Center: 4 Pillars (Students only) */}
+        {role !== 'counselor' && (
+          <>
+            <Menu.Item as={Link} to="/dashboard" active={location.pathname === '/dashboard'} name="Check In" />
+            <Menu.Item as={Link} to="/insights" active={location.pathname === '/insights'} name="Insights" />
+            <Menu.Item as={Link} to="/counselor" active={location.pathname === '/counselor'} name="Counselor" />
+            <Menu.Item as={Link} to="/community" active={location.pathname === '/community'} name="Community" />
+          </>
+        )}
+        {role === 'admin' && (
+          <Menu.Item as={Link} to="/admin" active={location.pathname === '/admin'}>
+            <Icon name="shield" /> Admin
+          </Menu.Item>
+        )}
 
         {/* Right: User Profile & Actions */}
         <Menu.Menu position="right">
