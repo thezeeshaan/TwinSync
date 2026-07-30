@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const { createClient } = require('@supabase/supabase-js');
-
+const runMigrations = require('./config/migrate');
 dotenv.config();
 
 const app = express();
@@ -34,13 +34,26 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'TwinSync API is running' });
 });
 
-// Setup basic endpoint structure for our 4 pillars
-app.use('/api/auth', (req, res) => res.status(501).json({ error: 'Not implemented yet' }));
+const authRoutes = require('./routes/authRoutes');
+
+// Setup endpoint structure for our 4 pillars
+app.use('/api/auth', authRoutes);
 app.use('/api/checkin', (req, res) => res.status(501).json({ error: 'Not implemented yet' }));
 app.use('/api/insights', (req, res) => res.status(501).json({ error: 'Not implemented yet' }));
 app.use('/api/counselor', (req, res) => res.status(501).json({ error: 'Not implemented yet' }));
 app.use('/api/community', (req, res) => res.status(501).json({ error: 'Not implemented yet' }));
 
-app.listen(port, () => {
-  console.log(`Server is running on port: ${port}`);
+// Add a test route
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'Backend is working!' });
+});
+
+// Run migrations and then start the server
+runMigrations().then(() => {
+  app.listen(port, () => {
+    console.log(`Server is running on port: ${port}`);
+  });
+}).catch(err => {
+  console.error("Failed to run migrations at startup:", err);
+  process.exit(1);
 });

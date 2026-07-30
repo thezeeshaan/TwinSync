@@ -1,0 +1,32 @@
+-- 1. Indexing Foreign Keys for Faster JOINs
+CREATE INDEX IF NOT EXISTS idx_users_institute_id ON public.users(institute_id);
+CREATE INDEX IF NOT EXISTS idx_counselors_institute_id ON public.counselors(institute_id);
+CREATE INDEX IF NOT EXISTS idx_counselors_verified_by ON public.counselors(verified_by);
+CREATE INDEX IF NOT EXISTS idx_counselor_availability_counselor_id ON public.counselor_availability(counselor_id);
+CREATE INDEX IF NOT EXISTS idx_check_ins_user_id ON public.check_ins(user_id);
+CREATE INDEX IF NOT EXISTS idx_daily_recommendations_user_id ON public.daily_recommendations(user_id);
+CREATE INDEX IF NOT EXISTS idx_daily_recommendations_check_in_id ON public.daily_recommendations(check_in_id);
+CREATE INDEX IF NOT EXISTS idx_ai_sessions_user_id ON public.ai_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_ai_messages_session_id ON public.ai_messages(session_id);
+CREATE INDEX IF NOT EXISTS idx_counselor_sessions_user_id ON public.counselor_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_counselor_sessions_counselor_id ON public.counselor_sessions(counselor_id);
+CREATE INDEX IF NOT EXISTS idx_counselor_messages_session_id ON public.counselor_messages(session_id);
+CREATE INDEX IF NOT EXISTS idx_community_conversations_p1 ON public.community_conversations(participant_one_id);
+CREATE INDEX IF NOT EXISTS idx_community_conversations_p2 ON public.community_conversations(participant_two_id);
+CREATE INDEX IF NOT EXISTS idx_community_messages_conversation_id ON public.community_messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_community_messages_sender_id ON public.community_messages(sender_id);
+CREATE INDEX IF NOT EXISTS idx_emergency_alerts_user_id ON public.emergency_alerts(user_id);
+CREATE INDEX IF NOT EXISTS idx_mental_health_courses_institute_id ON public.mental_health_courses(institute_id);
+CREATE INDEX IF NOT EXISTS idx_campus_events_institute_id ON public.campus_events(institute_id);
+CREATE INDEX IF NOT EXISTS idx_campus_events_created_by ON public.campus_events(created_by);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON public.notifications(user_id);
+
+-- 2. Indexing Commonly Filtered/Searched Columns
+CREATE INDEX IF NOT EXISTS idx_users_role ON public.users(role);
+CREATE INDEX IF NOT EXISTS idx_counselors_verification_status ON public.counselors(verification_status);
+CREATE INDEX IF NOT EXISTS idx_counselors_is_available ON public.counselors(is_available);
+CREATE INDEX IF NOT EXISTS idx_ai_sessions_status ON public.ai_sessions(status);
+CREATE INDEX IF NOT EXISTS idx_counselor_sessions_status ON public.counselor_sessions(status);
+CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON public.notifications(is_read);
+CREATE INDEX IF NOT EXISTS idx_community_messages_is_read ON public.community_messages(is_read);
+CREATE INDEX IF NOT EXISTS idx_counselor_messages_is_read ON public.counselor_messages(is_read);

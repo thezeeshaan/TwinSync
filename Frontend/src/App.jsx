@@ -1,54 +1,44 @@
-import { useState } from 'react'
-import { api } from './lib/api'
-import { supabase } from './lib/supabaseClient'
-import './App.css'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
+import ThemeToggle from './components/ThemeToggle';
+import Landing from './pages/Landing';
+import Dashboard from './pages/Dashboard';
+import StudentSignUp from './pages/auth/StudentSignUp';
+import CounselorSignUp from './pages/auth/CounselorSignUp';
+import Login from './pages/auth/Login';
+import './App.css';
 
-function App() {
-  const [backendStatus, setBackendStatus] = useState('Not tested yet');
-  const [supabaseStatus, setSupabaseStatus] = useState('Not tested yet');
 
-  const testBackend = async () => {
-    setBackendStatus('Testing...');
-    const { data, error } = await api.get('/api/health');
-    if (error) {
-      setBackendStatus(`Error: ${error.message}`);
-    } else {
-      setBackendStatus(`Success: ${data.message}`);
-    }
-  };
-
-  const testSupabase = async () => {
-    setSupabaseStatus('Testing...');
-    // A simple non-destructive call to check if Supabase is reachable
-    const { data, error } = await supabase.auth.getSession();
-    if (error) {
-      setSupabaseStatus(`Error: ${error.message}`);
-    } else {
-      setSupabaseStatus(`Success: Connected to Supabase!`);
-    }
-  };
-
-  return (
-    <div style={{ padding: '2rem', fontFamily: 'sans-serif', textAlign: 'center' }}>
-      <h1>TwinSync Connection Test</h1>
-      
-      <div style={{ marginBottom: '2rem', padding: '1rem', border: '1px solid #ccc', borderRadius: '8px' }}>
-        <h2>Backend Connection</h2>
-        <button onClick={testBackend} style={{ padding: '0.5rem 1rem', cursor: 'pointer' }}>
-          Test Backend
-        </button>
-        <p style={{ marginTop: '1rem', fontWeight: 'bold' }}>Status: {backendStatus}</p>
-      </div>
-
-      <div style={{ padding: '1rem', border: '1px solid #ccc', borderRadius: '8px' }}>
-        <h2>Supabase Connection</h2>
-        <button onClick={testSupabase} style={{ padding: '0.5rem 1rem', cursor: 'pointer' }}>
-          Test Supabase
-        </button>
-        <p style={{ marginTop: '1rem', fontWeight: 'bold' }}>Status: {supabaseStatus}</p>
-      </div>
-    </div>
-  )
+// Simple Protected Route Wrapper
+function ProtectedRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (!user) return <Navigate to="/login" replace />;
+  return children;
 }
 
-export default App
+function App() {
+  return (
+    <ThemeProvider>
+      <AuthProvider>
+        <Router>
+          <ThemeToggle />
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/signup/student" element={<StudentSignUp />} />
+            <Route path="/signup/counselor" element={<CounselorSignUp />} />
+            <Route path="/login" element={<Login />} />
+          </Routes>
+        </Router>
+      </AuthProvider>
+    </ThemeProvider>
+  );
+}
+
+export default App;
