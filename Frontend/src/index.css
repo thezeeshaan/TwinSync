@@ -39,6 +39,84 @@ body {
   color: var(--text-primary) !important;
   transition: background 0.3s ease, color 0.3s ease;
   min-height: 100vh;
+  overflow-x: hidden !important;
+}
+
+/* =========================================
+   MOBILE-FIRST GLOBAL RESPONSIVE RULES
+   ========================================= */
+
+/* Force all elements to respect container width */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* Fix Semantic UI Container on mobile — by default it has rigid max-widths */
+@media (max-width: 767px) {
+  .ui.container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  /* Reduce dashboard top margin for mobile (navbar is shorter) */
+  .ui.container[style*="marginTop"] {
+    margin-top: 5em !important;
+  }
+
+  /* Stack form groups vertically on mobile */
+  .ui.form .equal.width.fields {
+    flex-direction: column !important;
+  }
+  .ui.form .equal.width.fields > .field {
+    width: 100% !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  /* Make all segments and cards full-width on mobile */
+  .ui.segment {
+    padding: 1.5rem 1rem !important;
+  }
+
+  /* Dashboard heading size */
+  .dashboard-welcome {
+    font-size: 1.5rem !important;
+  }
+
+  /* ThemeToggle button: move down on mobile so it doesn't overlap navbar */
+  .ui.button.circular[style*="position: fixed"] {
+    top: auto !important;
+    bottom: 20px !important;
+    right: 16px !important;
+  }
+
+  /* Auth cards: ensure full width on mobile */
+  .auth-card {
+    max-width: 100% !important;
+    margin: 0 !important;
+  }
+
+  /* Landing page padding reduction */
+  .full-height {
+    padding: 2rem 0 !important;
+    padding-top: 2rem !important;
+  }
+}
+
+/* Dashboard welcome — mobile-first default */
+.dashboard-welcome {
+  font-size: 1.5rem !important;
+  margin-bottom: 0.5rem !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+}
+@media (min-width: 768px) {
+  .dashboard-welcome {
+    font-size: 2.5rem !important;
+  }
 }
 
 /* Global Full Height Layout */
@@ -70,6 +148,9 @@ body {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05) !important;
   color: var(--text-primary) !important;
   transition: all 0.3s ease;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  overflow-wrap: break-word !important;
 }
 
 /* Headers */
@@ -229,7 +310,7 @@ p {
    ========================================= */
 
 .hero-title {
-  font-size: 5rem !important;
+  font-size: 3rem !important; /* Mobile-first */
   font-weight: 800 !important;
   background: linear-gradient(135deg, var(--primary-blue), #8b5cf6);
   -webkit-background-clip: text;
@@ -238,14 +319,24 @@ p {
   margin-bottom: 0.2em !important;
   letter-spacing: -2px;
 }
+@media (min-width: 768px) {
+  .hero-title {
+    font-size: 5rem !important;
+  }
+}
 
 .hero-subtitle {
-  font-size: 1.4rem !important;
+  font-size: 1.1rem !important; /* Mobile-first */
   font-weight: 400 !important;
   color: var(--text-secondary) !important;
   max-width: 600px;
   margin: 0 auto 3rem auto !important;
   line-height: 1.6;
+}
+@media (min-width: 768px) {
+  .hero-subtitle {
+    font-size: 1.4rem !important;
+  }
 }
 
 .role-card {
@@ -254,7 +345,7 @@ p {
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--panel-border);
   border-radius: 24px;
-  padding: 3rem 2rem;
+  padding: 2rem 1.5rem; /* Mobile-first */
   text-align: center;
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   cursor: pointer;
@@ -264,6 +355,11 @@ p {
   align-items: center;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
   text-decoration: none !important;
+}
+@media (min-width: 768px) {
+  .role-card {
+    padding: 3rem 2rem;
+  }
 }
 
 .role-card:hover {
@@ -292,10 +388,15 @@ p {
 }
 
 .role-card h3 {
-  font-size: 1.8rem;
+  font-size: 1.5rem; /* Mobile-first */
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: 1rem;
+}
+@media (min-width: 768px) {
+  .role-card h3 {
+    font-size: 1.8rem;
+  }
 }
 
 .role-card p {
@@ -356,10 +457,15 @@ p {
   -webkit-backdrop-filter: blur(20px) !important;
   border: 1px solid var(--panel-border) !important;
   border-radius: 24px !important;
-  padding: 3rem 2rem !important;
+  padding: 2rem 1.5rem !important; /* Mobile-first */
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15) !important;
   transition: all 0.3s ease;
   margin: 0 auto;
+}
+@media (min-width: 768px) {
+  .auth-card {
+    padding: 3rem 2rem !important;
+  }
 }
 
 [data-theme='dark'] .auth-card {
@@ -368,7 +474,7 @@ p {
 }
 
 .auth-header {
-  font-size: 2.2rem !important;
+  font-size: 1.8rem !important; /* Mobile-first */
   font-weight: 800 !important;
   background: linear-gradient(135deg, var(--primary-blue), #8b5cf6);
   -webkit-background-clip: text;
@@ -376,6 +482,11 @@ p {
   -webkit-text-fill-color: transparent;
   margin-bottom: 0.5rem !important;
   text-align: center;
+}
+@media (min-width: 768px) {
+  .auth-header {
+    font-size: 2.2rem !important;
+  }
 }
 
 .auth-subheader {
