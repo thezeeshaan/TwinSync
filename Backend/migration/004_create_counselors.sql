@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS public.counselors (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    phone VARCHAR(20) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    gender VARCHAR(20) NOT NULL CHECK (gender IN ('male','female','non_binary','prefer_not_to_say')),
+    designation VARCHAR(255) NOT NULL,
+    photo_url TEXT,
+    description TEXT,
+    is_staff BOOLEAN DEFAULT false,
+    institute_id UUID NOT NULL REFERENCES public.institutes(id),
+    verification_status VARCHAR(20) DEFAULT 'pending' CHECK (verification_status IN ('pending','verified','rejected')),
+    verified_by UUID REFERENCES public.users(id),
+    verified_at TIMESTAMP WITH TIME ZONE,
+    is_available BOOLEAN DEFAULT false,
+    last_seen_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    deleted_at TIMESTAMP WITH TIME ZONE
+);
