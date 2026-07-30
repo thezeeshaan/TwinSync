@@ -13,11 +13,11 @@ async function seed() {
     await client.connect();
     
     // Check if institute already exists
-    const { rows } = await client.query('SELECT * FROM institutes WHERE code = $1', ['IITKGP']);
+    const { rows } = await client.query('SELECT * FROM institutes WHERE name ILIKE $1', ['IIT Kharagpur']);
     if (rows.length === 0) {
       await client.query(`
-        INSERT INTO institutes (name, code)
-        VALUES ('IIT Kharagpur', 'IITKGP')
+        INSERT INTO institutes (name)
+        VALUES ('IIT Kharagpur')
       `);
       console.log("Mock institute IIT Kharagpur seeded successfully.");
     } else {

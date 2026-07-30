@@ -47,10 +47,31 @@ function CounselorSignUp() {
     }
   };
 
+  const validateForm = () => {
+    const errors = [];
+    const phoneRegex = /^\d{10}$/;
+
+    if (!formData.name || formData.name.trim().length < 2) errors.push('Full Name must be at least 2 characters.');
+    if (!phoneRegex.test(formData.phone)) errors.push('Phone Number must be exactly 10 digits.');
+    if (!formData.college || formData.college.trim().length < 2) errors.push('College Name must be at least 2 characters.');
+    if (!formData.designation || formData.designation.trim().length < 2) errors.push('Designation must be at least 2 characters.');
+    if (!formData.description || formData.description.trim().length < 10) errors.push('Description must be at least 10 characters.');
+
+    return errors;
+  };
+
   const handleCompleteProfile = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
+    // Frontend validation
+    const validationErrors = validateForm();
+    if (validationErrors.length > 0) {
+      setError(validationErrors.join(' '));
+      setLoading(false);
+      return;
+    }
 
     try {
       if (!user) throw new Error("You must be logged in with Google first.");
