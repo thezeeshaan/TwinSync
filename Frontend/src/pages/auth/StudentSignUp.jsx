@@ -69,17 +69,19 @@ function StudentSignUp() {
 
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-      // Pass the user.id and user.email from Google directly to our backend!
-      const profileData = {
-        ...formData,
-        auth_user_id: user.id,
-        email: user.email // We automatically pull their verified Google email
-      };
+      // FIX 1+2: Get the current session token and send it as a Bearer token.
+      // The backend extracts user identity from the verified JWT — never from the body.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Session expired. Please sign in again.");
+
+      // Only send profile form data — no auth_user_id or email needed
+      const profileData = { ...formData };
 
       const response = await fetch(`${API_URL}/api/auth/register-student`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify(profileData)
       });

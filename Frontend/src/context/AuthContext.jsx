@@ -5,51 +5,59 @@ const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [role, setRole] = useState(null); // 'student', 'admin', 'counselor'
+  const [role, setRole] = useState(null);
   const [profile, setProfile] = useState(null);
+  // FIX 4: Track verification_status for counselors ('pending', 'verified', 'rejected')
+  const [verificationStatus, setVerificationStatus] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const verifyAndSetUser = async (authUser) => {
+    const verifyAndSetUser = async (authUser, session) => {
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       try {
-        const response = await fetch(`${API_URL}/api/auth/me?auth_user_id=${authUser.id}`);
+        // FIX 1+2: Send the verified JWT as a Bearer token.
+        // Backend extracts the user ID from the token — never trust client-supplied IDs.
+        const response = await fetch(`${API_URL}/api/auth/me`, {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`
+          }
+        });
         const data = await response.json();
 
         // Allow users on signup pages even if they don't have a DB record yet
         const isSignupRoute = window.location.pathname.includes('/signup/');
 
         if (!data.exists && !isSignupRoute) {
-          // Force logout for ghost users trying to bypass signup
           await supabase.auth.signOut();
           setUser(null);
           setRole(null);
           setProfile(null);
+          setVerificationStatus(null);
           window.location.href = '/login?error=no_account';
         } else {
           setUser(authUser);
           setRole(data.role || null);
           setProfile(data.profile || null);
+          setVerificationStatus(data.verification_status || null);
         }
       } catch (err) {
         console.error("Error verifying user profile:", err);
-        // On network error during signup, don't block the user
         setUser(authUser);
       } finally {
         setLoading(false);
       }
     };
 
-    // FIX Bug 1: Only use onAuthStateChange (fires INITIAL_SESSION on load).
-    // Removed getSession() to prevent the double-call race condition.
+    // Only use onAuthStateChange — no race condition from getSession()
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (session) {
-          await verifyAndSetUser(session.user);
+          await verifyAndSetUser(session.user, session);
         } else {
           setUser(null);
           setRole(null);
           setProfile(null);
+          setVerificationStatus(null);
           setLoading(false);
         }
       }
@@ -64,12 +72,12 @@ export function AuthProvider({ children }) {
     user,
     role,
     profile,
+    verificationStatus,
     loading
   };
 
   return (
     <AuthContext.Provider value={value}>
-      {/* FIX Bug 4: Show a real loading spinner instead of a blank white screen */}
       {loading ? (
         <div style={{
           display: 'flex',
