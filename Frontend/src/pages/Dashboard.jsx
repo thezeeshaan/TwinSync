@@ -4,10 +4,10 @@ import Navbar from '../components/Navbar';
 import { useAuth } from '../context/AuthContext';
 
 function Dashboard() {
-  const { user, profile, role } = useAuth();
+  const { user, profile, role, verificationStatus } = useAuth();
 
-  // FIX Bug 3: Counselors who are pending verification should NOT see the regular dashboard.
-  if (role === 'counselor') {
+  // FIX 4: Distinguish between pending and verified counselors using verification_status.
+  if (role === 'counselor' && verificationStatus !== 'verified') {
     return (
       <>
         <Navbar />

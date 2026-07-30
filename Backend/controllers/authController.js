@@ -1,33 +1,42 @@
 const db = require('../config/db');
 
-// Helper to generate an anonymous alias (e.g. User-5a3f)
+// FIX 3: Increased to 8 characters to avoid UNIQUE constraint collisions.
+// 36^8 = ~2.8 trillion combinations, effectively collision-proof.
 const generateAlias = () => {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
   let randomString = '';
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 8; i++) {
     randomString += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return `User-${randomString}`;
 };
 
+// FIX 1+2: auth_user_id now comes from req.authUser (set by verifySupabaseToken middleware),
+// NOT from req.query or req.body. This prevents account enumeration and impersonation.
 const getMe = async (req, res) => {
-  const { auth_user_id } = req.query;
-  if (!auth_user_id) return res.status(400).json({ error: 'auth_user_id is required' });
+  const auth_user_id = req.authUser.id;
 
   const client = await db.getClient();
   try {
     // Check if they are a student/admin
-    const userRes = await client.query('SELECT role, name, phone FROM users WHERE id = $1', [auth_user_id]);
+    const userRes = await client.query(
+      'SELECT role, name, phone FROM users WHERE id = $1',
+      [auth_user_id]
+    );
     if (userRes.rows.length > 0) {
       const { role, name, phone } = userRes.rows[0];
       return res.json({ exists: true, role, profile: { name, phone } });
     }
-    
-    // Check if they are a counselor
-    const counselorRes = await client.query('SELECT name, phone FROM counselors WHERE id = $1', [auth_user_id]);
+
+    // FIX 4: Also return verification_status so Dashboard can distinguish
+    // pending counselors from verified ones.
+    const counselorRes = await client.query(
+      'SELECT name, phone, verification_status FROM counselors WHERE id = $1',
+      [auth_user_id]
+    );
     if (counselorRes.rows.length > 0) {
-      const { name, phone } = counselorRes.rows[0];
-      return res.json({ exists: true, role: 'counselor', profile: { name, phone } });
+      const { name, phone, verification_status } = counselorRes.rows[0];
+      return res.json({ exists: true, role: 'counselor', verification_status, profile: { name, phone } });
     }
 
     return res.json({ exists: false, role: null });
@@ -41,17 +50,15 @@ const getMe = async (req, res) => {
 
 
 const registerStudent = async (req, res) => {
+  // FIX 1+2: Use verified identity from middleware, not client-supplied auth_user_id
+  const authUserId = req.authUser.id;
+  const authEmail = req.authUser.email;
+
   const {
-    auth_user_id,
-    name, email, phone, age, gender, college, department, roll_number, degree,
+    name, phone, age, gender, college, department, roll_number, degree,
     emergency_name, emergency_phone,
     consent_wellbeing, consent_daily, consent_counselor, consent_emergency, consent_peer
   } = req.body;
-  
-  if (!auth_user_id) {
-    return res.status(400).json({ error: 'auth_user_id is required' });
-  }
-  const authUserId = auth_user_id;
 
   const client = await db.getClient();
   try {
@@ -59,23 +66,29 @@ const registerStudent = async (req, res) => {
 
     // 1. Get Institute ID by name or code
     const instituteSearch = college || 'IIT Kharagpur';
-    let instituteRes = await client.query('SELECT id FROM institutes WHERE name ILIKE $1 OR code ILIKE $1', [instituteSearch]);
-    
+    let instituteRes = await client.query(
+      'SELECT id FROM institutes WHERE name ILIKE $1 OR code ILIKE $1',
+      [instituteSearch]
+    );
+
     let instituteId;
     if (instituteRes.rows.length === 0) {
-      // If not found, insert it
+      // If not found, create it
       const tempCode = instituteSearch.substring(0, 10).toUpperCase().replace(/\s+/g, '');
-      const insertRes = await client.query('INSERT INTO institutes (name, code) VALUES ($1, $2) RETURNING id', [instituteSearch, tempCode]);
+      const insertRes = await client.query(
+        'INSERT INTO institutes (name, code) VALUES ($1, $2) RETURNING id',
+        [instituteSearch, tempCode]
+      );
       instituteId = insertRes.rows[0].id;
     } else {
       instituteId = instituteRes.rows[0].id;
     }
 
-    // 2. Insert into users
+    // 2. Insert into users (email comes from verified JWT, not client body)
     await client.query(
       `INSERT INTO users (id, email, phone, name, gender, role, institute_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [authUserId, email, phone, name, gender, 'student', instituteId]
+      [authUserId, authEmail, phone, name, gender, 'student', instituteId]
     );
 
     // 3. Insert into student_profiles
@@ -98,7 +111,6 @@ const registerStudent = async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error registering student:', error);
-    // FIX Bug 5: Surface the real DB error (e.g. duplicate email) to the client
     const message = error.detail || error.message || 'Failed to register student profile';
     res.status(500).json({ error: message });
   } finally {
@@ -107,12 +119,11 @@ const registerStudent = async (req, res) => {
 };
 
 const registerCounselor = async (req, res) => {
-  const { auth_user_id, name, email, phone, gender, designation, description, is_staff, college } = req.body;
-  
-  if (!auth_user_id) {
-    return res.status(400).json({ error: 'auth_user_id is required' });
-  }
-  const authUserId = auth_user_id;
+  // FIX 1+2: Use verified identity from middleware
+  const authUserId = req.authUser.id;
+  const authEmail = req.authUser.email;
+
+  const { name, phone, gender, designation, description, is_staff, college } = req.body;
 
   const client = await db.getClient();
   try {
@@ -120,23 +131,28 @@ const registerCounselor = async (req, res) => {
 
     // 1. Get Institute ID by name or code
     const instituteSearch = college || 'IIT Kharagpur';
-    let instituteRes = await client.query('SELECT id FROM institutes WHERE name ILIKE $1 OR code ILIKE $1', [instituteSearch]);
-    
+    let instituteRes = await client.query(
+      'SELECT id FROM institutes WHERE name ILIKE $1 OR code ILIKE $1',
+      [instituteSearch]
+    );
+
     let instituteId;
     if (instituteRes.rows.length === 0) {
-      // If not found, insert it
       const tempCode = instituteSearch.substring(0, 10).toUpperCase().replace(/\s+/g, '');
-      const insertRes = await client.query('INSERT INTO institutes (name, code) VALUES ($1, $2) RETURNING id', [instituteSearch, tempCode]);
+      const insertRes = await client.query(
+        'INSERT INTO institutes (name, code) VALUES ($1, $2) RETURNING id',
+        [instituteSearch, tempCode]
+      );
       instituteId = insertRes.rows[0].id;
     } else {
       instituteId = instituteRes.rows[0].id;
     }
 
-    // 2. Insert into counselors
+    // 2. Insert into counselors (email from verified JWT)
     await client.query(
       `INSERT INTO counselors (id, email, phone, name, gender, designation, description, is_staff, institute_id, verification_status)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-      [authUserId, email, phone, name, gender, designation, description, is_staff, instituteId, 'pending']
+      [authUserId, authEmail, phone, name, gender, designation, description, is_staff, instituteId, 'pending']
     );
 
     await client.query('COMMIT');
@@ -144,7 +160,6 @@ const registerCounselor = async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error registering counselor:', error);
-    // FIX Bug 5: Surface the real DB error to the client
     const message = error.detail || error.message || 'Failed to register counselor profile';
     res.status(500).json({ error: message });
   } finally {
