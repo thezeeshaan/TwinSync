@@ -20,13 +20,53 @@
 
 ```
 TwinSync/
-├── Backend/          # (Empty — future backend code)
-├── Doc/              # All project documentation
-│   ├── prd.md                    # Product Requirements Document (v2)
-│   ├── table.md                  # Database Schema & Table Definitions (v2, 18 tables)
-│   ├── workflow_architecture.md  # System Architecture & Workflow Diagrams (v2)
-│   └── context.md                # THIS FILE — Project context & progress log
-└── Frontend/         # (Empty — future frontend code)
+├── Backend/
+│   ├── config/
+│   │   ├── db.js                    # PostgreSQL connection pool (uses SUPABASE_DB_URL)
+│   │   └── migrate.js               # Auto-migration runner with schema_migrations tracking
+│   ├── controllers/
+│   │   └── authController.js         # getMe, registerStudent, registerCounselor
+│   ├── middleware/
+│   │   └── verifySupabaseToken.js    # JWT verification using service_role key
+│   ├── migration/                    # 21 SQL migration files (001–021)
+│   ├── routes/
+│   │   └── authRoutes.js             # /api/auth/* routes
+│   ├── .env                          # Environment variables (6 vars)
+│   ├── .env.example                  # Template with all 6 required vars
+│   ├── index.js                      # Express server entry point
+│   ├── package.json                  # Dependencies: express, pg, supabase-js, cors, dotenv
+│   └── seed.js                       # Seeds IIT Kharagpur as default institute
+├── Doc/
+│   ├── prd.md                        # Product Requirements Document (v2)
+│   ├── table.md                      # Database Schema & Table Definitions (v2, updated)
+│   ├── workflow_architecture.md      # System Architecture & Workflow Diagrams (v2)
+│   └── context.md                    # THIS FILE — Project context & progress log
+└── Frontend/
+    ├── src/
+    │   ├── components/
+    │   │   ├── Navbar.jsx             # Responsive navbar with mobile hamburger menu
+    │   │   └── ThemeToggle.jsx        # Dark/light mode floating button (bottom-right)
+    │   ├── config/
+    │   │   └── supabaseClient.js      # Supabase client (uses VITE_SUPABASE_URL + anon key)
+    │   ├── context/
+    │   │   ├── AuthContext.jsx         # Auth state: user, profile, role, verificationStatus
+    │   │   └── ThemeContext.jsx        # Theme toggle state (dark/light)
+    │   ├── pages/
+    │   │   ├── auth/
+    │   │   │   ├── StudentSignUp.jsx   # 2-step: Google OAuth → profile form (with validation)
+    │   │   │   ├── CounselorSignUp.jsx # 2-step: Google OAuth → profile form (with validation)
+    │   │   │   └── Login.jsx           # Google OAuth login
+    │   │   ├── Dashboard.jsx           # Student/Counselor dashboard (placeholder)
+    │   │   └── Landing.jsx             # Landing page with role selection cards
+    │   ├── services/
+    │   │   └── api.js                  # Axios/fetch config for backend API
+    │   ├── App.jsx                     # Router with protected routes
+    │   ├── App.css                     # Cleaned (was Vite boilerplate)
+    │   └── index.css                   # Full design system: variables, glassmorphism, mobile-first
+    ├── .env                            # VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_API_URL
+    ├── .env.example                    # Template with all 3 required vars
+    ├── index.html                      # Entry HTML (title: TwinSync, meta description added)
+    └── package.json                    # Dependencies: react, react-router-dom, supabase-js, semantic-ui, lucide-react
 ```
 
 ---
@@ -56,39 +96,56 @@ TwinSync/
      - `counselors` table — entirely independent table with its own auth fields. Separate "Sign Up as Counselor" flow.
    - Faculty advisor and timetable fields placed directly in `student_profiles` (manual input for prototype, future ERP fallback).
    - Removed the separate `erp_student_data` table (prototype doesn't need it; data lives in `student_profiles`).
-   - Full table list:
-     1. `institutes`
-     2. `users` (student / admin)
-     3. `student_profiles`
-     4. `counselors`
-     5. `counselor_availability`
-     6. `user_consents`
-     7. `check_ins`
-     8. `daily_recommendations`
-     9. `ai_sessions`
-     10. `ai_messages`
-     11. `counselor_sessions`
-     12. `counselor_messages`
-     13. `community_conversations`
-     14. `community_messages`
-     15. `emergency_alerts`
-     16. `mental_health_courses`
-     17. `campus_events`
-     18. `notifications`
 
 3. **Created Workflow Architecture Document**
    - System architecture overview (Client → API → Workers → Data → External Services).
    - Separate auth flow diagram for Students vs Counselors.
-   - 9 detailed workflow diagrams (Mermaid):
-     - Student Registration & Onboarding (with manual timetable + faculty advisor)
-     - Counselor Registration & Verification
-     - Daily Check-In → Recommendations → Streak
-     - AI Insights session (dynamic questioning + emergency detection)
-     - Counselor random matching & anonymous chat
-     - Community anonymous DM flow
-     - Emergency SOS protocol (with consent check)
-     - ERP Cron sync (marked as Future)
-     - Campus Admin workflow (verification + promotion)
+   - 9 detailed workflow diagrams (Mermaid).
+
+---
+
+### Session 2 — 30 July 2026
+
+**Objective:** Full codebase audit, bug fixing, mobile-first responsiveness, and schema cleanup.
+
+#### What We Did
+
+1. **Table Schema Audit (Migration files vs PRD)**
+   - Compared all 20 migration files (001–020) against `table.md` line by line.
+   - Found 3 issues:
+     - `password_hash` listed in PRD for `users` and `counselors` but correctly omitted in code (Supabase Auth handles this) → Updated `table.md` to match reality.
+     - Backend `.env.example` was missing 3 required variables → Fixed.
+
+2. **Backend & Frontend Code Audit**
+   - **Bug: Backend `.env` missing critical variables** — `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_URL`, `FRONTEND_URL` → User added these manually.
+   - **Bug: Frontend `.env` missing `VITE_API_URL`** → User added this manually.
+   - **Bug: `App.css` was 185 lines of Vite boilerplate** → Cleaned to empty placeholder.
+   - **Bug: `index.html` title was "frontend"** → Changed to "TwinSync — Campus Mental Health Platform" + added meta description.
+   - **Bug: `authMiddleware.js` was dead code** (unused, duplicate of `verifySupabaseToken.js`) → Deleted after discussion with user.
+
+3. **Institute Registration Bug Fix**
+   - **Bug:** Typing "iit kgp" crashed registration because the code generator produced the same code as "IIT Kharagpur" → UNIQUE constraint violation.
+   - **Fix:** Created `findOrCreateInstitute()` with 3-step lookup: exact match → fuzzy word match → create new.
+
+4. **Removed Redundant `code` Column from `institutes`**
+   - The `code` column was never used meaningfully — institutes are identified by `name` (UNIQUE) and `id` (UUID).
+   - Removed from: migration SQL, `authController.js`, `seed.js`, and `table.md`.
+   - Created migration `021_drop_institute_code.sql` to drop the column from the live database.
+
+5. **Form Validation (Frontend + Backend)**
+   - **Student form:** Phone (10 digits), age (16–100), name/college/department/degree (min 2 chars), roll number (required), emergency phone (10 digits), all 5 consents required.
+   - **Counselor form:** Phone (10 digits), name/college/designation (min 2 chars), description (min 10 chars).
+   - Validation runs on **both** frontend (instant UX feedback) and backend (defense in depth).
+
+6. **Mobile-First Responsive Design**
+   - **CSS Overhaul:** Added mobile-first global rules to `index.css`:
+     - `overflow-x: hidden` on body
+     - Semantic UI `<Container>` forced to `width: 100%` on mobile
+     - Form groups stack vertically below 768px
+     - Typography scales: small defaults → larger on `min-width: 768px`
+   - **Navbar:** Rebuilt with `useState`/`useEffect` for responsive detection. Below 768px → hamburger menu with vertical dropdown. Above → original horizontal layout.
+   - **ThemeToggle:** Moved from top-right to bottom-right to avoid overlapping mobile navbar.
+   - **Dashboard:** Heading uses `.dashboard-welcome` class with mobile-first sizing.
 
 ---
 
@@ -97,49 +154,106 @@ TwinSync/
 | # | Decision | Rationale |
 |---|---|---|
 | 1 | Two separate auth tables (`users` + `counselors`) | Different sign-up flows, different data models, clean separation of concerns |
-| 2 | No Super Admin role in the system | Project creator manages via direct DB access; reduces complexity |
-| 3 | `role` ENUM on `users` is only `student` / `admin` | Campus Admins are just students with elevated privileges |
-| 4 | Manual timetable + faculty advisor input (prototype) | Removes ERP dependency for the prototype; fields are designed to be overwritten by ERP data in the future |
-| 5 | No profile photos for students | Anonymity-first design; counselor photos are for admin verification only |
-| 6 | Auto-generated `anonymous_alias` per student | Used for Community DMs and peer interactions; identity is never revealed |
-| 7 | Random counselor matching (no preferences) | All counselors are pre-vetted; simplifies the matching engine for v1 |
-| 8 | Community = 1-on-1 anonymous DMs, not chat rooms | Like Instagram DMs but with hidden identities; peer list with active/inactive status |
-| 9 | Emergency protocol requires consent check | Even if distress is detected, notifications only fire if `emergency_protocols` consent is true |
-| 10 | Anonymity enforced at API layer, not DB layer | DB stores real IDs (for moderation/safety); the API never exposes them to the other party |
+| 2 | Supabase Auth (Google OAuth) — no `password_hash` in app tables | Auth managed entirely by Supabase; `users.id` references `auth.users(id)` |
+| 3 | No Super Admin role in the system | Project creator manages via direct DB access; reduces complexity |
+| 4 | `role` ENUM on `users` is only `student` / `admin` | Campus Admins are just students with elevated privileges |
+| 5 | Manual timetable + faculty advisor input (prototype) | Removes ERP dependency for the prototype |
+| 6 | No profile photos for students | Anonymity-first design; counselor photos are for admin verification only |
+| 7 | Auto-generated `anonymous_alias` per student | Used for Community DMs and peer interactions |
+| 8 | Random counselor matching (no preferences) | All counselors are pre-vetted; simplifies the matching engine for v1 |
+| 9 | Community = 1-on-1 anonymous DMs, not chat rooms | Like Instagram DMs but with hidden identities |
+| 10 | Emergency protocol requires consent check | Notifications only fire if `emergency_protocols` consent is true |
+| 11 | Anonymity enforced at API layer, not DB layer | DB stores real IDs (for moderation/safety); the API never exposes them |
+| 12 | `institutes` table has no `code` column | Redundant — institutes identified by `name` (UNIQUE) + `id` (UUID) |
+| 13 | Institute auto-creation with fuzzy matching | `findOrCreateInstitute()` searches by name/words before creating new |
+| 14 | Mobile-first responsive design | Default CSS targets mobile; `min-width` media queries scale up for desktop |
+| 15 | Double-layer validation (frontend + backend) | Frontend for UX, backend for security — never trust the client |
 
 ---
 
-## Tech Stack (Finalized)
+## Tech Stack (Current Status)
 
 | Layer | Selection | Status |
 |---|---|---|
-| Frontend | React.js (via Vite) | ⏳ Pending setup |
-| Backend | Node.js (with Express) | ⏳ Pending setup |
-| Database / Auth | Supabase (PostgreSQL under the hood) | ⏳ Pending setup |
-| Real-Time Chat | Supabase Realtime / WebSockets | ⏳ Pending setup |
+| Frontend | React 18 + Vite 5 + Semantic UI React | ✅ Running |
+| Backend | Node.js + Express 5 | ✅ Running |
+| Database | Supabase (PostgreSQL) | ✅ Connected, 21 migrations applied |
+| Auth | Supabase Auth (Google OAuth) | ✅ Working |
+| Real-Time Chat | Supabase Realtime / WebSockets | ⏳ Not started |
 | AI/LLM | TBD (Gemini or OpenAI) | ❌ Not started |
 | SMS/Email | TBD (Twilio / SendGrid) | ❌ Not started |
-| Cache | Not needed immediately (Supabase handles much of this) | ➖ |
+
+---
+
+## Environment Variables
+
+### Backend (`Backend/.env`)
+| Variable | Purpose |
+|---|---|
+| `PORT` | Express server port (default: 5000) |
+| `SUPABASE_URL` | Supabase project URL |
+| `SUPABASE_ANON_KEY` | Public anon key (for general client operations) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Admin key for JWT verification (server-side only) |
+| `SUPABASE_DB_URL` | Direct PostgreSQL connection string (for migrations & queries) |
+| `FRONTEND_URL` | Deployed frontend URL (for CORS) |
+
+### Frontend (`Frontend/.env`)
+| Variable | Purpose |
+|---|---|
+| `VITE_SUPABASE_URL` | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Public anon key |
+| `VITE_API_URL` | Backend API URL (default: `http://localhost:5000`) |
 
 ---
 
 ## What's Next
 
-- [ ] Finalize tech stack decisions (Frontend framework, Backend framework)
-- [ ] Set up the project boilerplate (Backend + Frontend)
-- [ ] Implement database migrations from the schema
-- [ ] Build the auth system (separate flows for Users and Counselors)
+- [x] Set up the project boilerplate (Backend + Frontend)
+- [x] Implement database migrations from the schema
+- [x] Build the auth system (separate flows for Users and Counselors)
+- [x] Fix all existing bugs and schema mismatches
+- [x] Make the app mobile-first responsive
 - [ ] Build the Four Pillars (Check-In → Insights → Counselor → Community)
 - [ ] Implement Emergency Protocol
+- [ ] Deploy to Render (Backend) + Vercel/Netlify (Frontend)
 - [ ] ERP integration (future phase)
+
+---
+
+## Database Migration Files
+
+| # | File | Purpose |
+|---|---|---|
+| 001 | `create_institutes.sql` | Institutes table (name, erp fields) |
+| 002 | `create_users.sql` | Users table (students + admins) |
+| 003 | `create_student_profiles.sql` | Student profile details |
+| 004 | `create_counselors.sql` | Counselors table |
+| 005 | `create_counselor_availability.sql` | Counselor time slots |
+| 006 | `create_user_consents.sql` | Explicit user consent flags |
+| 007 | `create_check_ins.sql` | Daily mood check-ins |
+| 008 | `create_daily_recommendations.sql` | AI-generated daily tips |
+| 009 | `create_ai_sessions.sql` | AI Insights chat sessions |
+| 010 | `create_ai_messages.sql` | AI Insights messages |
+| 011 | `create_counselor_sessions.sql` | Counselor chat sessions |
+| 012 | `create_counselor_messages.sql` | Counselor chat messages |
+| 013 | `create_community_conversations.sql` | Anonymous DM conversations |
+| 014 | `create_community_messages.sql` | Anonymous DM messages |
+| 015 | `create_emergency_alerts.sql` | Emergency SOS alerts |
+| 016 | `create_mental_health_courses.sql` | Mental health resources |
+| 017 | `create_campus_events.sql` | Campus event listings |
+| 018 | `create_notifications.sql` | Push notifications |
+| 019 | `create_update_triggers.sql` | Auto-update `updated_at` timestamps |
+| 020 | `create_indexes.sql` | Performance indexes |
+| 021 | `drop_institute_code.sql` | Removes redundant `code` column |
 
 ---
 
 ## Document References
 
-| Document | Path | Version | Description |
-|---|---|---|---|
-| PRD | [prd.md](file:///c:/Users/mdaza/OneDrive%20-%20iitkgp.ac.in/Pictures/TwinSync/Doc/prd.md) | v2 | Product Requirements Document |
-| DB Schema | [table.md](file:///c:/Users/mdaza/OneDrive%20-%20iitkgp.ac.in/Pictures/TwinSync/Doc/table.md) | v2 | 18-table database schema |
-| Architecture | [workflow_architecture.md](file:///c:/Users/mdaza/OneDrive%20-%20iitkgp.ac.in/Pictures/TwinSync/Doc/workflow_architecture.md) | v2 | System & workflow diagrams |
-| Context | [context.md](file:///c:/Users/mdaza/OneDrive%20-%20iitkgp.ac.in/Pictures/TwinSync/Doc/context.md) | v1 | This file — project tracker |
+| Document | Path | Version |
+|---|---|---|
+| PRD | `Doc/prd.md` | v2 |
+| DB Schema | `Doc/table.md` | v2 (updated: removed password_hash, code) |
+| Architecture | `Doc/workflow_architecture.md` | v2 |
+| Context | `Doc/context.md` | v2 (this file) |
+

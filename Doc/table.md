@@ -13,13 +13,12 @@ Represents each college/university onboarded to TwinSync.
 |---|---|---|---|
 | `id` | UUID | PK | |
 | `name` | VARCHAR(255) | NOT NULL, UNIQUE | e.g. "IIT Kharagpur" |
-| `code` | VARCHAR(50) | NOT NULL, UNIQUE | Short code e.g. "IITKGP" |
 | `erp_api_base_url` | TEXT | NULLABLE | Future: Base URL for ERP integration |
 | `erp_api_key` | TEXT | NULLABLE | Future: Encrypted API key for ERP access |
 | `created_at` | TIMESTAMP | NOT NULL, DEFAULT NOW | |
 | `updated_at` | TIMESTAMP | NOT NULL, DEFAULT NOW | |
 
-> **Prototype Note:** Institute records are seeded manually by the project creator directly in the database.
+> **Note:** Institutes are auto-created during student/counselor registration if no matching name is found. They can also be seeded manually.
 
 ---
 
@@ -28,9 +27,8 @@ Central table for **Students** and **Campus Admins**. Both share the same sign-u
 
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
-| `id` | UUID | PK | |
+| `id` | UUID | PK, FK → auth.users(id) | Supabase Auth manages authentication |
 | `email` | VARCHAR(255) | NOT NULL, UNIQUE | Login identifier |
-| `password_hash` | TEXT | NOT NULL | Bcrypt/Argon2 hashed |
 | `phone` | VARCHAR(20) | NOT NULL | |
 | `name` | VARCHAR(255) | NOT NULL | Full name |
 | `gender` | ENUM('male','female','non_binary','prefer_not_to_say') | NOT NULL | |
@@ -41,6 +39,8 @@ Central table for **Students** and **Campus Admins**. Both share the same sign-u
 | `created_at` | TIMESTAMP | NOT NULL, DEFAULT NOW | |
 | `updated_at` | TIMESTAMP | NOT NULL, DEFAULT NOW | |
 | `deleted_at` | TIMESTAMP | NULLABLE | Soft delete |
+
+> **Auth Note:** No `password_hash` column — authentication is handled entirely by Supabase Auth (Google OAuth). The `id` column references `auth.users(id)` directly.
 
 > **Admin Provisioning:** The first Campus Admin per institute is assigned by the project creator directly in the DB (setting `role = 'admin'`). That admin can then promote other students via the admin panel.
 
@@ -78,9 +78,8 @@ Extended profile data for every user (both students and admins are students at h
 
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
-| `id` | UUID | PK | |
+| `id` | UUID | PK, FK → auth.users(id) | Supabase Auth manages authentication |
 | `email` | VARCHAR(255) | NOT NULL, UNIQUE | Login identifier |
-| `password_hash` | TEXT | NOT NULL | Bcrypt/Argon2 hashed |
 | `phone` | VARCHAR(20) | NOT NULL | |
 | `name` | VARCHAR(255) | NOT NULL | Full name |
 | `gender` | ENUM('male','female','non_binary','prefer_not_to_say') | NOT NULL | |
@@ -97,6 +96,8 @@ Extended profile data for every user (both students and admins are students at h
 | `created_at` | TIMESTAMP | NOT NULL, DEFAULT NOW | |
 | `updated_at` | TIMESTAMP | NOT NULL, DEFAULT NOW | |
 | `deleted_at` | TIMESTAMP | NULLABLE | Soft delete |
+
+> **Auth Note:** No `password_hash` column — authentication is handled entirely by Supabase Auth (Google OAuth). The `id` column references `auth.users(id)` directly.
 
 > **Anonymity Note:** `photo_url` is stored solely for admin verification. It is **never** exposed to students during counseling sessions or anywhere on the student-facing interface.
 
