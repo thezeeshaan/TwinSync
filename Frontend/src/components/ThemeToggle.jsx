@@ -1,9 +1,16 @@
 import React from 'react';
 import { Button, Icon } from 'semantic-ui-react';
 import { useTheme } from '../context/ThemeContext';
+import { useLocation } from 'react-router-dom';
 
 function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
+  const location = useLocation();
+
+  // Hide the theme toggle on chat pages to avoid overlapping the input bar
+  if (location.pathname.startsWith('/community/chat/') || location.pathname.startsWith('/counselor/chat/')) {
+    return null;
+  }
 
   return (
     <Button

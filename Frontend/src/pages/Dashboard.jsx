@@ -1,6 +1,7 @@
 import React from 'react';
 import { Container, Header, Segment, Icon, Message } from 'semantic-ui-react';
 import Navbar from '../components/Navbar';
+import CounselorDashboard from '../components/CounselorDashboard';
 import { useAuth } from '../context/AuthContext';
 
 function Dashboard() {
@@ -35,6 +36,18 @@ function Dashboard() {
               Signed in as: <strong>{user?.email}</strong>
             </p>
           </div>
+        </Container>
+      </>
+    );
+  }
+
+  // Render counselor dashboard for verified counselors
+  if (role === 'counselor') {
+    return (
+      <>
+        <Navbar />
+        <Container style={{ marginTop: '7em', paddingBottom: '4em', padding: '0 1rem' }}>
+          <CounselorDashboard />
         </Container>
       </>
     );

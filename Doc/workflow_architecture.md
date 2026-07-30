@@ -224,13 +224,12 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A["Project creator sets\nrole = 'admin' directly in DB\nfor first admin per institute"] --> B["Campus Admin logs in\n(via Student login flow)"]
-    B --> C["Admin Panel shows:\n• Pending counselor verifications\n• User management"]
+    A["Project creator sets\nrole = 'admin' directly in DB\nfor all admins per institute"] --> B["Campus Admin logs in\n(via Student login flow)"]
+    B --> C["Admin Panel shows:\n• Pending counselor verifications"]
     C --> D["Admin reviews\ncounselor credentials & photo"]
     D --> E{"Approve or Reject?"}
     E -->|Approve| F["counselors.verification_status\n→ verified"]
     E -->|Reject| G["counselors.verification_status\n→ rejected"]
-    B --> H["Admin can promote\nother students to admin\n(users.role → 'admin')"]
 ```
 
 ---

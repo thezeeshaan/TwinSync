@@ -12,7 +12,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const verifyAndSetUser = async (authUser, session) => {
+    const verifyAndSetUser = async (authUser, session, event) => {
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       try {
         // FIX 1+2: Send the verified JWT as a Bearer token.
@@ -39,6 +39,22 @@ export function AuthProvider({ children }) {
           setRole(data.role || null);
           setProfile(data.profile || null);
           setVerificationStatus(data.verification_status || null);
+
+          // Auto-toggle counselor to active on log in
+          if (event === 'SIGNED_IN' && data.role === 'counselor' && data.verification_status === 'verified') {
+            try {
+              await fetch(`${API_URL}/api/counselor/availability`, {
+                method: 'PUT',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${session.access_token}`
+                },
+                body: JSON.stringify({ is_available: true })
+              });
+            } catch (e) {
+              console.error("Auto-toggle failed:", e);
+            }
+          }
         }
       } catch (err) {
         console.error("Error verifying user profile:", err);
@@ -52,7 +68,7 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (session) {
-          await verifyAndSetUser(session.user, session);
+          await verifyAndSetUser(session.user, session, event);
         } else {
           setUser(null);
           setRole(null);

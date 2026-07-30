@@ -149,6 +149,41 @@ TwinSync/
 
 ---
 
+### Session 3 — 31 July 2026 (Current)
+
+**Objective:** Implement the Community (Anonymous DMs) and Counselor (Human-to-Human Chat) pillars with real-time functionality.
+
+#### What We Did
+
+1. **Community Feature (Anonymous Peer DMs)**
+   - **Backend:** Created `communityController.js` providing endpoints to list peers, fetch conversations, get messages, and send messages.
+   - **Logic Rule:** Ensured the feature is platform-wide (ADR #16). Removed the initial institute-wise filter, so all signed-up users (students and admins) who have provided peer consent are visible.
+   - **Frontend:** Built `Community.jsx` (peer list) and `CommunityChat.jsx` (chat interface).
+   - **Real-Time:** Integrated Supabase Realtime to listen for `INSERT` events on the `community_messages` table.
+
+2. **Counselor Feature (Anonymous 1-on-1 Sessions)**
+   - **Backend:** Created `counselorController.js` providing endpoints to request a session, fetch sessions, toggle availability, and handle messaging.
+   - **Matching Algorithm:** Implemented purely random matching (as per PRD). When a student requests a session, the system randomly selects one counselor who is both `verification_status = 'verified'` and `is_available = true`.
+   - **Student Frontend:** Built `Counselor.jsx` (request interface) and `CounselorChat.jsx` (chat interface). The student sees the peer simply as "Counselor".
+   - **Counselor Frontend:** Updated `Dashboard.jsx` to render a new `CounselorDashboard.jsx` when a verified counselor logs in. This dashboard allows counselors to toggle their availability status and view incoming/past sessions. The counselor sees the peer simply as "Student".
+   - **Real-Time:** Integrated Supabase Realtime for the `counselor_messages` table.
+
+   - **Real-Time:** Integrated Supabase Realtime for the `counselor_messages` table.
+   - **Waiting Queue:** Implemented a waiting queue for students. If no counselor is available, a session is created with `status = 'waiting'` and no assigned `counselor_id`. Counselors see waiting sessions on their dashboard and can actively accept them. Added migration `022_nullable_counselor_session.sql` to support this.
+   - **Availability Lifecycle:** Tied the counselor `is_available` toggle directly to their authentication lifecycle. Counselors automatically go active on login, and inactive on logout, while retaining manual toggle control during their session.
+
+3. **Admin Panel Refinement**
+   - **Bug Fix:** Removed the ability for Campus Admins to view all students and manually promote them. Because student identities are entirely anonymous (no names/emails stored in `users`), admins wouldn't know who they are promoting. 
+   - **Decision:** Role provisioning is handled exclusively at the database level by the project creator. The admin panel is strictly scoped to reviewing and verifying pending counselors.
+
+4. **UI/UX Refinements**
+   - **Landing & Auth Overhaul:** Completely redesigned the Landing page and Auth flows. The Landing page now uses distinct color themes (Blue for Students, Amber for Counselors) to separate paths. The Login page was rebranded as a "Unified Login Portal" to reduce confusion. Added "Back" buttons across all auth views for better navigation.
+   - **Counselor Navigation Bug:** Fixed a confusing UX issue where Counselors saw Student-specific navigation links (Check In, Insights, Community) and could accidentally navigate to the student-side counselor request page.
+   - Implemented distinct visual themes for the chat interfaces (Teal gradient for Community, Purple gradient for Counselor) to prevent user confusion.
+   - Updated `ThemeToggle.jsx` to automatically hide on all chat pages so it doesn't obstruct the message input bar on mobile devices.
+
+---
+
 ## Key Architectural Decisions (ADR Summary)
 
 | # | Decision | Rationale |
@@ -168,6 +203,9 @@ TwinSync/
 | 13 | Institute auto-creation with fuzzy matching | `findOrCreateInstitute()` searches by name/words before creating new |
 | 14 | Mobile-first responsive design | Default CSS targets mobile; `min-width` media queries scale up for desktop |
 | 15 | Double-layer validation (frontend + backend) | Frontend for UX, backend for security — never trust the client |
+| 16 | Community & Counselor features are platform-wide | No institute filter — all consented users see each other across institutes |
+| 17 | Waiting Queue over pure instant-match | Gives students a choice to wait for a counselor or fallback to AI |
+| 18 | Admin role promotion disabled in UI | Prevents blind promotions since student accounts are strictly anonymous |
 
 ---
 
@@ -179,7 +217,7 @@ TwinSync/
 | Backend | Node.js + Express 5 | ✅ Running |
 | Database | Supabase (PostgreSQL) | ✅ Connected, 21 migrations applied |
 | Auth | Supabase Auth (Google OAuth) | ✅ Working |
-| Real-Time Chat | Supabase Realtime / WebSockets | ⏳ Not started |
+| Real-Time Chat | Supabase Realtime / WebSockets | ✅ Working (Community & Counselor) |
 | AI/LLM | TBD (Gemini or OpenAI) | ❌ Not started |
 | SMS/Email | TBD (Twilio / SendGrid) | ❌ Not started |
 
@@ -213,7 +251,10 @@ TwinSync/
 - [x] Build the auth system (separate flows for Users and Counselors)
 - [x] Fix all existing bugs and schema mismatches
 - [x] Make the app mobile-first responsive
-- [ ] Build the Four Pillars (Check-In → Insights → Counselor → Community)
+- [x] Build the Community Pillar (Anonymous Peer DMs)
+- [x] Build the Counselor Pillar (Human-to-Human Chat)
+- [ ] Build the Check-In Pillar (Daily mood tracking)
+- [ ] Build the Insights Pillar (AI Assessment)
 - [ ] Implement Emergency Protocol
 - [ ] Deploy to Render (Backend) + Vercel/Netlify (Frontend)
 - [ ] ERP integration (future phase)
@@ -245,6 +286,7 @@ TwinSync/
 | 019 | `create_update_triggers.sql` | Auto-update `updated_at` timestamps |
 | 020 | `create_indexes.sql` | Performance indexes |
 | 021 | `drop_institute_code.sql` | Removes redundant `code` column |
+| 022 | `nullable_counselor_session.sql` | Allows sessions without assigned counselor (Waiting Queue) |
 
 ---
 
