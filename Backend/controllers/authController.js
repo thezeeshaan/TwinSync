@@ -61,6 +61,8 @@ const getMe = async (req, res) => {
     );
     if (userRes.rows.length > 0) {
       const { role, name, phone } = userRes.rows[0];
+      // Update last_seen_at for online/offline status in Community
+      await client.query('UPDATE users SET last_seen_at = NOW() WHERE id = $1', [auth_user_id]);
       return res.json({ exists: true, role, profile: { name, phone } });
     }
 
