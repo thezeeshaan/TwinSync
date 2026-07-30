@@ -9,7 +9,7 @@ The platform has **two completely separate sign-up flows** ("Sign Up as Student"
 *   **Student:** The primary end-user. Students use the platform for daily check-ins, AI assessments, anonymous 1-on-1 peer support, and anonymous counseling. Stored in the `users` table.
 *   **Counselor:** Verified mental health professionals who provide 1-on-1 anonymous text-based counseling to students. Stored in a **separate `counselors` table** with an independent auth flow.
 *   **Campus Admin (Student):** A student promoted to admin within their institute.
-    *   *Provisioning:* The first admin per institute is assigned directly in the database by the project creator. That admin can then promote other students within their institute to the Campus Admin role.
+    *   *Provisioning:* All Campus Admins are assigned directly in the database by the project creator (setting `role = 'admin'`). In-app role promotion is intentionally excluded because student identities are anonymous — an admin cannot identify who to promote.
     *   *Duties:* Primary role is to verify the credentials and identity of new counselors for their specific college.
 *   **Faculty Advisor:** A college professor or academic advisor. In the prototype, their contact details are provided manually by the student during registration. In the future, this data will be fetched from the college ERP. They receive automated emergency alerts.
 
