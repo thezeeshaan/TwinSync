@@ -185,7 +185,7 @@ function CounselorChat() {
     return (
       <div className="chat-page">
         <div className="chat-header counselor-chat-header">
-          <button className="chat-back-btn" onClick={() => navigate('/counselor')}>
+          <button className="chat-back-btn" onClick={() => navigate(myRole === 'counselor' ? '/dashboard' : '/counselor')}>
             <Icon name="arrow left" />
           </button>
           <div className="chat-header-info">
@@ -203,7 +203,7 @@ function CounselorChat() {
     <div className="chat-page">
       {/* Header */}
       <div className="chat-header counselor-chat-header">
-        <button className="chat-back-btn" onClick={() => navigate('/counselor')}>
+        <button className="chat-back-btn" onClick={() => navigate(myRole === 'counselor' ? '/dashboard' : '/counselor')}>
           <Icon name="arrow left" />
         </button>
         <div className="chat-header-info">

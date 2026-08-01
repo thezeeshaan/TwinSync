@@ -11,6 +11,15 @@ const getPeers = async (req, res) => {
 
   const client = await db.getClient();
   try {
+    // Verify caller is a student/admin in the users table
+    const userCheck = await client.query(
+      `SELECT id FROM users WHERE id = $1 AND deleted_at IS NULL`,
+      [userId]
+    );
+    if (userCheck.rows.length === 0) {
+      return res.status(403).json({ error: 'Only students can access community features.' });
+    }
+
     // Fetch all peers with peer support consent, exclude self
     const peersRes = await client.query(
       `SELECT 
@@ -117,6 +126,15 @@ const startConversation = async (req, res) => {
 
   const client = await db.getClient();
   try {
+    // Verify caller is a student/admin in the users table
+    const userCheck = await client.query(
+      `SELECT id FROM users WHERE id = $1 AND deleted_at IS NULL`,
+      [userId]
+    );
+    if (userCheck.rows.length === 0) {
+      return res.status(403).json({ error: 'Only students can access community features.' });
+    }
+
     // Check if conversation already exists (in either direction)
     const existingRes = await client.query(
       `SELECT id FROM community_conversations 

@@ -6,8 +6,14 @@ const db = require('../config/db');
  * Only accessible by admin users.
  */
 const getPendingCounselors = async (req, res) => {
+  const adminId = req.authUser.id;
   const client = await db.getClient();
   try {
+    // Get admin's institute
+    const adminRes = await client.query(`SELECT institute_id FROM users WHERE id = $1`, [adminId]);
+    if (adminRes.rows.length === 0) return res.status(403).json({ error: 'Admin not found' });
+    const instituteId = adminRes.rows[0].institute_id;
+
     const result = await client.query(
       `SELECT 
         c.id, c.name, c.email, c.phone, c.gender, c.designation, 
@@ -16,8 +22,9 @@ const getPendingCounselors = async (req, res) => {
         i.name AS institute_name
       FROM counselors c
       LEFT JOIN institutes i ON i.id = c.institute_id
-      WHERE c.verification_status = 'pending' AND c.deleted_at IS NULL
-      ORDER BY c.created_at ASC`
+      WHERE c.verification_status = 'pending' AND c.deleted_at IS NULL AND c.institute_id = $1
+      ORDER BY c.created_at ASC`,
+      [instituteId]
     );
 
     res.json({ counselors: result.rows });
@@ -34,8 +41,14 @@ const getPendingCounselors = async (req, res) => {
  * Returns all counselors (for admin overview).
  */
 const getAllCounselors = async (req, res) => {
+  const adminId = req.authUser.id;
   const client = await db.getClient();
   try {
+    // Get admin's institute
+    const adminRes = await client.query(`SELECT institute_id FROM users WHERE id = $1`, [adminId]);
+    if (adminRes.rows.length === 0) return res.status(403).json({ error: 'Admin not found' });
+    const instituteId = adminRes.rows[0].institute_id;
+
     const result = await client.query(
       `SELECT 
         c.id, c.name, c.email, c.phone, c.gender, c.designation, 
@@ -44,14 +57,15 @@ const getAllCounselors = async (req, res) => {
         i.name AS institute_name
       FROM counselors c
       LEFT JOIN institutes i ON i.id = c.institute_id
-      WHERE c.deleted_at IS NULL
+      WHERE c.deleted_at IS NULL AND c.institute_id = $1
       ORDER BY 
         CASE c.verification_status 
           WHEN 'pending' THEN 0 
           WHEN 'verified' THEN 1 
           WHEN 'rejected' THEN 2 
         END,
-        c.created_at ASC`
+        c.created_at ASC`,
+      [instituteId]
     );
 
     res.json({ counselors: result.rows });
@@ -79,15 +93,20 @@ const verifyCounselor = async (req, res) => {
 
   const client = await db.getClient();
   try {
+    // Get admin's institute
+    const adminRes = await client.query(`SELECT institute_id FROM users WHERE id = $1`, [adminId]);
+    if (adminRes.rows.length === 0) return res.status(403).json({ error: 'Admin not found' });
+    const instituteId = adminRes.rows[0].institute_id;
+
     const result = await client.query(
       `UPDATE counselors 
        SET verification_status = $1, 
            verified_by = $2, 
            verified_at = NOW(),
            updated_at = NOW()
-       WHERE id = $3 AND deleted_at IS NULL
+       WHERE id = $3 AND institute_id = $4 AND deleted_at IS NULL
        RETURNING id, name, verification_status`,
-      [action, adminId, counselorId]
+      [action, adminId, counselorId, instituteId]
     );
 
     if (result.rows.length === 0) {

@@ -184,6 +184,25 @@ TwinSync/
 
 ---
 
+### Session 4 — 1 August 2026
+
+**Objective:** Resolve 8 security and UX issues flagged by GitHub Copilot code review.
+
+#### What We Did
+
+1. **Security Hardening (Backend)**
+   - **`requestSession` & `startConversation`:** Added explicit `users` table verification before processing. Prevents FK constraint violations (500 errors) if a counselor token hits student-only endpoints — now returns 403.
+   - **`getWaitingSessions`:** Restricted to verified counselors only. Removed `user_id` from the SQL payload to prevent student identity leaks.
+   - **`acceptSession`:** Added `is_available = true` check so counselors can't accept sessions while toggled inactive.
+   - **`getPeers`:** Added `users` table verification to block counselors from viewing the anonymous peer directory.
+   - **Admin Institute Scoping:** All three admin endpoints (`getPendingCounselors`, `getAllCounselors`, `verifyCounselor`) now filter by the admin's own `institute_id`. Admins can no longer view or act on counselors from other campuses.
+
+2. **UX Fixes (Frontend)**
+   - **Counselor Navbar:** Added a "Dashboard" link for counselors in both mobile and desktop menus (they previously had zero navigation items).
+   - **Counselor Chat Redirect:** Fixed the back button in `CounselorChat.jsx` to route counselors to `/dashboard` instead of the student-facing `/counselor` page.
+
+---
+
 ## Key Architectural Decisions (ADR Summary)
 
 | # | Decision | Rationale |
