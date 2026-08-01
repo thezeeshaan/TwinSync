@@ -24,7 +24,7 @@ function Navbar() {
         </Menu.Item>
 
         {/* Center: 4 Pillars */}
-        <Menu.Item as={Link} to="/dashboard" active={location.pathname === '/dashboard'} name="Check In" />
+        <Menu.Item as={Link} to="/checkin" active={location.pathname === '/checkin'} name="Check In" />
         <Menu.Item as={Link} to="/insights" active={location.pathname === '/insights'} name="Insights" />
         <Menu.Item as={Link} to="/counselor" active={location.pathname === '/counselor'} name="Counselor" />
         <Menu.Item as={Link} to="/community" active={location.pathname === '/community'} name="Community" />
