@@ -195,11 +195,17 @@ TwinSync/
    - **`getWaitingSessions`:** Restricted to verified counselors only. Removed `user_id` from the SQL payload to prevent student identity leaks.
    - **`acceptSession`:** Added `is_available = true` check so counselors can't accept sessions while toggled inactive.
    - **`getPeers`:** Added `users` table verification to block counselors from viewing the anonymous peer directory.
-   - **Admin Institute Scoping:** All three admin endpoints (`getPendingCounselors`, `getAllCounselors`, `verifyCounselor`) now filter by the admin's own `institute_id`. Admins can no longer view or act on counselors from other campuses.
+   - **Admin Institute Scoping:** Initially added institute_id filtering to all admin endpoints. Later **relaxed for the prototype** because test users are spread across multiple institutes created by fuzzy matching inconsistencies. Added `TODO (Production)` comments for re-enabling.
 
 2. **UX Fixes (Frontend)**
    - **Counselor Navbar:** Added a "Dashboard" link for counselors in both mobile and desktop menus (they previously had zero navigation items).
    - **Counselor Chat Redirect:** Fixed the back button in `CounselorChat.jsx` to route counselors to `/dashboard` instead of the student-facing `/counselor` page.
+
+3. **Admin Promotion Feature (New — not originally in PRD)**
+   - **PRD Updated:** Added email-based admin promotion to the Campus Admin section.
+   - **Backend:** New `PUT /api/admin/promote` endpoint. Uses the Supabase Admin API (`service_role` key) to look up a user by email in `auth.users`, cross-references them with the `users` table, and promotes their `role` from `student` to `admin`.
+   - **Frontend:** Added "Promote Student to Admin" section in `AdminPanel.jsx` with an email input, a confirmation dialog (amber warning box), and full error/success handling.
+   - **Design Decision:** Preserves anonymity — the admin never sees a list of users; they must already know the person's email externally.
 
 ---
 
@@ -224,7 +230,8 @@ TwinSync/
 | 15 | Double-layer validation (frontend + backend) | Frontend for UX, backend for security — never trust the client |
 | 16 | Community & Counselor features are platform-wide | No institute filter — all consented users see each other across institutes |
 | 17 | Waiting Queue over pure instant-match | Gives students a choice to wait for a counselor or fallback to AI |
-| 18 | Admin role promotion disabled in UI | Prevents blind promotions since student accounts are strictly anonymous |
+| 18 | Email-based admin promotion (anonymity-safe) | Admin enters an email to promote a student — no user list is ever exposed |
+| 19 | Admin institute scoping relaxed for prototype | Test data has inconsistent institute names; re-enable via TODO in production |
 
 ---
 
