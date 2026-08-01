@@ -4,16 +4,12 @@ const db = require('../config/db');
  * GET /api/admin/counselors/pending
  * Returns all counselors with verification_status = 'pending'.
  * Only accessible by admin users.
+ * 
+ * TODO (Production): Re-enable institute_id scoping so admins only see their own campus counselors.
  */
 const getPendingCounselors = async (req, res) => {
-  const adminId = req.authUser.id;
   const client = await db.getClient();
   try {
-    // Get admin's institute
-    const adminRes = await client.query(`SELECT institute_id FROM users WHERE id = $1`, [adminId]);
-    if (adminRes.rows.length === 0) return res.status(403).json({ error: 'Admin not found' });
-    const instituteId = adminRes.rows[0].institute_id;
-
     const result = await client.query(
       `SELECT 
         c.id, c.name, c.email, c.phone, c.gender, c.designation, 
@@ -22,9 +18,8 @@ const getPendingCounselors = async (req, res) => {
         i.name AS institute_name
       FROM counselors c
       LEFT JOIN institutes i ON i.id = c.institute_id
-      WHERE c.verification_status = 'pending' AND c.deleted_at IS NULL AND c.institute_id = $1
-      ORDER BY c.created_at ASC`,
-      [instituteId]
+      WHERE c.verification_status = 'pending' AND c.deleted_at IS NULL
+      ORDER BY c.created_at ASC`
     );
 
     res.json({ counselors: result.rows });
@@ -39,16 +34,12 @@ const getPendingCounselors = async (req, res) => {
 /**
  * GET /api/admin/counselors/all
  * Returns all counselors (for admin overview).
+ * 
+ * TODO (Production): Re-enable institute_id scoping so admins only see their own campus counselors.
  */
 const getAllCounselors = async (req, res) => {
-  const adminId = req.authUser.id;
   const client = await db.getClient();
   try {
-    // Get admin's institute
-    const adminRes = await client.query(`SELECT institute_id FROM users WHERE id = $1`, [adminId]);
-    if (adminRes.rows.length === 0) return res.status(403).json({ error: 'Admin not found' });
-    const instituteId = adminRes.rows[0].institute_id;
-
     const result = await client.query(
       `SELECT 
         c.id, c.name, c.email, c.phone, c.gender, c.designation, 
@@ -57,15 +48,14 @@ const getAllCounselors = async (req, res) => {
         i.name AS institute_name
       FROM counselors c
       LEFT JOIN institutes i ON i.id = c.institute_id
-      WHERE c.deleted_at IS NULL AND c.institute_id = $1
+      WHERE c.deleted_at IS NULL
       ORDER BY 
         CASE c.verification_status 
           WHEN 'pending' THEN 0 
           WHEN 'verified' THEN 1 
           WHEN 'rejected' THEN 2 
         END,
-        c.created_at ASC`,
-      [instituteId]
+        c.created_at ASC`
     );
 
     res.json({ counselors: result.rows });
@@ -81,6 +71,8 @@ const getAllCounselors = async (req, res) => {
  * PUT /api/admin/counselors/:counselorId/verify
  * Approve or reject a counselor's application.
  * Body: { action: 'verified' | 'rejected' }
+ * 
+ * TODO (Production): Re-enable institute_id scoping so admins can only verify their own campus counselors.
  */
 const verifyCounselor = async (req, res) => {
   const adminId = req.authUser.id;
@@ -93,20 +85,15 @@ const verifyCounselor = async (req, res) => {
 
   const client = await db.getClient();
   try {
-    // Get admin's institute
-    const adminRes = await client.query(`SELECT institute_id FROM users WHERE id = $1`, [adminId]);
-    if (adminRes.rows.length === 0) return res.status(403).json({ error: 'Admin not found' });
-    const instituteId = adminRes.rows[0].institute_id;
-
     const result = await client.query(
       `UPDATE counselors 
        SET verification_status = $1, 
            verified_by = $2, 
            verified_at = NOW(),
            updated_at = NOW()
-       WHERE id = $3 AND institute_id = $4 AND deleted_at IS NULL
+       WHERE id = $3 AND deleted_at IS NULL
        RETURNING id, name, verification_status`,
-      [action, adminId, counselorId, instituteId]
+      [action, adminId, counselorId]
     );
 
     if (result.rows.length === 0) {
