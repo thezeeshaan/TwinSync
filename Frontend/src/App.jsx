@@ -4,6 +4,8 @@ import { ThemeProvider } from './context/ThemeContext';
 import ThemeToggle from './components/ThemeToggle';
 import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
+import CheckIn from './pages/CheckIn';
+import Insights from './pages/Insights';
 import StudentSignUp from './pages/auth/StudentSignUp';
 import CounselorSignUp from './pages/auth/CounselorSignUp';
 import Login from './pages/auth/Login';
@@ -23,17 +25,34 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
+// Only show ThemeToggle when the user is authenticated
+function AuthThemeToggle() {
+  const { user } = useAuth();
+  if (!user) return null;
+  return <ThemeToggle />;
+}
+
 function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
         <Router>
-          <ThemeToggle />
+          <AuthThemeToggle />
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/checkin" element={
+              <ProtectedRoute>
+                <CheckIn />
+              </ProtectedRoute>
+            } />
+            <Route path="/insights" element={
+              <ProtectedRoute>
+                <Insights />
               </ProtectedRoute>
             } />
             <Route path="/signup/student" element={<StudentSignUp />} />
