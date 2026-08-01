@@ -11,6 +11,42 @@ const generateAlias = () => {
   return `User-${randomString}`;
 };
 
+/**
+ * Find or create an institute by name.
+ * Uses fuzzy matching: searches by exact name OR partial word match.
+ * If no match is found, creates a new institute.
+ */
+const findOrCreateInstitute = async (client, collegeName) => {
+  const searchTerm = collegeName.trim();
+
+  // 1. Try exact match on name (case-insensitive)
+  let res = await client.query(
+    'SELECT id FROM institutes WHERE name ILIKE $1',
+    [searchTerm]
+  );
+  if (res.rows.length > 0) return res.rows[0].id;
+
+  // 2. Try fuzzy match — check if ALL words from the search appear in the name
+  //    e.g. "iit kgp" → words ["iit", "kgp"] → matches "IIT Kharagpur"
+  const words = searchTerm.split(/\s+/).filter(w => w.length > 0);
+  if (words.length > 0) {
+    const conditions = words.map((_, i) => `name ILIKE $${i + 1}`);
+    const params = words.map(w => `%${w}%`);
+    const fuzzyRes = await client.query(
+      `SELECT id FROM institutes WHERE ${conditions.join(' AND ')} LIMIT 1`,
+      params
+    );
+    if (fuzzyRes.rows.length > 0) return fuzzyRes.rows[0].id;
+  }
+
+  // 3. Not found — create new institute
+  const insertRes = await client.query(
+    'INSERT INTO institutes (name) VALUES ($1) RETURNING id',
+    [searchTerm]
+  );
+  return insertRes.rows[0].id;
+};
+
 // FIX 1+2: auth_user_id now comes from req.authUser (set by verifySupabaseToken middleware),
 // NOT from req.query or req.body. This prevents account enumeration and impersonation.
 const getMe = async (req, res) => {
@@ -25,6 +61,8 @@ const getMe = async (req, res) => {
     );
     if (userRes.rows.length > 0) {
       const { role, name, phone } = userRes.rows[0];
+      // Update last_seen_at for online/offline status in Community
+      await client.query('UPDATE users SET last_seen_at = NOW() WHERE id = $1', [auth_user_id]);
       return res.json({ exists: true, role, profile: { name, phone } });
     }
 
@@ -60,29 +98,28 @@ const registerStudent = async (req, res) => {
     consent_wellbeing, consent_daily, consent_counselor, consent_emergency, consent_peer
   } = req.body;
 
+  // Server-side validation
+  const phoneRegex = /^\d{10}$/;
+  const errors = [];
+  if (!name || name.trim().length < 2) errors.push('Name must be at least 2 characters.');
+  if (!phoneRegex.test(phone)) errors.push('Phone must be exactly 10 digits.');
+  const ageNum = parseInt(age);
+  if (isNaN(ageNum) || ageNum < 16 || ageNum > 100) errors.push('Age must be between 16 and 100.');
+  if (!['male', 'female', 'non_binary', 'prefer_not_to_say'].includes(gender)) errors.push('Invalid gender value.');
+  if (!college || college.trim().length < 2) errors.push('College name must be at least 2 characters.');
+  if (!department || department.trim().length < 2) errors.push('Department must be at least 2 characters.');
+  if (!roll_number || roll_number.trim().length < 1) errors.push('Roll number is required.');
+  if (!degree || degree.trim().length < 2) errors.push('Degree must be at least 2 characters.');
+  if (!emergency_name || emergency_name.trim().length < 2) errors.push('Emergency contact name must be at least 2 characters.');
+  if (!phoneRegex.test(emergency_phone)) errors.push('Emergency phone must be exactly 10 digits.');
+  if (errors.length > 0) return res.status(400).json({ error: errors.join(' ') });
+
   const client = await db.getClient();
   try {
     await client.query('BEGIN');
 
-    // 1. Get Institute ID by name or code
-    const instituteSearch = college || 'IIT Kharagpur';
-    let instituteRes = await client.query(
-      'SELECT id FROM institutes WHERE name ILIKE $1 OR code ILIKE $1',
-      [instituteSearch]
-    );
-
-    let instituteId;
-    if (instituteRes.rows.length === 0) {
-      // If not found, create it
-      const tempCode = instituteSearch.substring(0, 10).toUpperCase().replace(/\s+/g, '');
-      const insertRes = await client.query(
-        'INSERT INTO institutes (name, code) VALUES ($1, $2) RETURNING id',
-        [instituteSearch, tempCode]
-      );
-      instituteId = insertRes.rows[0].id;
-    } else {
-      instituteId = instituteRes.rows[0].id;
-    }
+    // 1. Find or create institute (with fuzzy matching + collision-safe codes)
+    const instituteId = await findOrCreateInstitute(client, college || 'IIT Kharagpur');
 
     // 2. Insert into users (email comes from verified JWT, not client body)
     await client.query(
@@ -125,28 +162,23 @@ const registerCounselor = async (req, res) => {
 
   const { name, phone, gender, designation, description, is_staff, college } = req.body;
 
+  // Server-side validation
+  const phoneRegex = /^\d{10}$/;
+  const errors = [];
+  if (!name || name.trim().length < 2) errors.push('Name must be at least 2 characters.');
+  if (!phoneRegex.test(phone)) errors.push('Phone must be exactly 10 digits.');
+  if (!['male', 'female', 'non_binary', 'prefer_not_to_say'].includes(gender)) errors.push('Invalid gender value.');
+  if (!college || college.trim().length < 2) errors.push('College name must be at least 2 characters.');
+  if (!designation || designation.trim().length < 2) errors.push('Designation must be at least 2 characters.');
+  if (!description || description.trim().length < 10) errors.push('Description must be at least 10 characters.');
+  if (errors.length > 0) return res.status(400).json({ error: errors.join(' ') });
+
   const client = await db.getClient();
   try {
     await client.query('BEGIN');
 
-    // 1. Get Institute ID by name or code
-    const instituteSearch = college || 'IIT Kharagpur';
-    let instituteRes = await client.query(
-      'SELECT id FROM institutes WHERE name ILIKE $1 OR code ILIKE $1',
-      [instituteSearch]
-    );
-
-    let instituteId;
-    if (instituteRes.rows.length === 0) {
-      const tempCode = instituteSearch.substring(0, 10).toUpperCase().replace(/\s+/g, '');
-      const insertRes = await client.query(
-        'INSERT INTO institutes (name, code) VALUES ($1, $2) RETURNING id',
-        [instituteSearch, tempCode]
-      );
-      instituteId = insertRes.rows[0].id;
-    } else {
-      instituteId = instituteRes.rows[0].id;
-    }
+    // 1. Find or create institute (with fuzzy matching + collision-safe codes)
+    const instituteId = await findOrCreateInstitute(client, college || 'IIT Kharagpur');
 
     // 2. Insert into counselors (email from verified JWT)
     await client.query(
@@ -172,3 +204,4 @@ module.exports = {
   registerStudent,
   registerCounselor
 };
+

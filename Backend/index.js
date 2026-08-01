@@ -30,16 +30,20 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'TwinSync API is running' });
 });
 
-const authRoutes     = require('./routes/authRoutes');
-const checkinRoutes  = require('./routes/checkinRoutes');
+const authRoutes = require('./routes/authRoutes');
+const checkinRoutes = require('./routes/checkinRoutes');
 const insightsRoutes = require('./routes/insightsRoutes');
+const communityRoutes = require('./routes/communityRoutes');
+const counselorRoutes = require('./routes/counselorRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
-// Setup endpoint structure for our 4 pillars
-app.use('/api/auth',      authRoutes);
-app.use('/api/checkin',   checkinRoutes);
-app.use('/api/insights',  insightsRoutes);
-app.use('/api/counselor', (req, res) => res.status(501).json({ error: 'Not implemented yet' }));
-app.use('/api/community', (req, res) => res.status(501).json({ error: 'Not implemented yet' }));
+// Setup endpoint structure for our 4 pillars + admin
+app.use('/api/auth', authRoutes);
+app.use('/api/checkin', checkinRoutes);
+app.use('/api/insights', insightsRoutes);
+app.use('/api/counselor', counselorRoutes);
+app.use('/api/community', communityRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Add a test route
 app.get('/api/test', (req, res) => {

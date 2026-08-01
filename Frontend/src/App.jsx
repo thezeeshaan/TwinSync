@@ -9,6 +9,11 @@ import Insights from './pages/Insights';
 import StudentSignUp from './pages/auth/StudentSignUp';
 import CounselorSignUp from './pages/auth/CounselorSignUp';
 import Login from './pages/auth/Login';
+import Community from './pages/Community';
+import CommunityChat from './pages/CommunityChat';
+import Counselor from './pages/Counselor';
+import CounselorChat from './pages/CounselorChat';
+import AdminPanel from './pages/AdminPanel';
 import './App.css';
 
 
@@ -53,6 +58,31 @@ function App() {
             <Route path="/signup/student" element={<StudentSignUp />} />
             <Route path="/signup/counselor" element={<CounselorSignUp />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/community" element={
+              <ProtectedRoute>
+                <Community />
+              </ProtectedRoute>
+            } />
+            <Route path="/community/chat/:conversationId" element={
+              <ProtectedRoute>
+                <CommunityChat />
+              </ProtectedRoute>
+            } />
+            <Route path="/counselor" element={
+              <ProtectedRoute>
+                <Counselor />
+              </ProtectedRoute>
+            } />
+            <Route path="/counselor/chat/:sessionId" element={
+              <ProtectedRoute>
+                <CounselorChat />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin" element={
+              <ProtectedRoute>
+                <AdminPanel />
+              </ProtectedRoute>
+            } />
           </Routes>
         </Router>
       </AuthProvider>

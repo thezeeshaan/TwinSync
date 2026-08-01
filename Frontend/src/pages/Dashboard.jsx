@@ -1,6 +1,7 @@
 import React from 'react';
 import { Container, Header, Segment, Icon, Message } from 'semantic-ui-react';
 import Navbar from '../components/Navbar';
+import CounselorDashboard from '../components/CounselorDashboard';
 import { useAuth } from '../context/AuthContext';
 
 function Dashboard() {
@@ -40,20 +41,32 @@ function Dashboard() {
     );
   }
 
+  // Render counselor dashboard for verified counselors
+  if (role === 'counselor') {
+    return (
+      <>
+        <Navbar />
+        <Container style={{ marginTop: '7em', paddingBottom: '4em', padding: '0 1rem' }}>
+          <CounselorDashboard />
+        </Container>
+      </>
+    );
+  }
+
   // Regular student dashboard
   return (
     <>
       <Navbar />
-      <Container style={{ marginTop: '7em', paddingBottom: '4em' }}>
-        <Header as="h1" style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>
+      <Container style={{ marginTop: '7em', paddingBottom: '4em', padding: '0 1rem' }}>
+        <Header as="h1" className="dashboard-welcome">
           Welcome back, {profile?.name || user?.email}! 👋
         </Header>
-        <p style={{ fontSize: '1.2rem', color: 'var(--text-secondary)', marginBottom: '2rem' }}>
+        <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', marginBottom: '2rem' }}>
           Ready for your daily check-in?
         </p>
 
         {/* Placeholder for the 4 pillar content */}
-        <Segment padded="very" textAlign="center" style={{ minHeight: '300px', borderRadius: '12px' }}>
+        <Segment padded textAlign="center" style={{ minHeight: '200px', borderRadius: '12px' }}>
           <Header as="h3" color="grey">
             Dashboard Content Coming Soon
           </Header>

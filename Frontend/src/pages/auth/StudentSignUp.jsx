@@ -52,14 +52,40 @@ function StudentSignUp() {
     }
   };
 
+  const validateForm = () => {
+    const errors = [];
+    const phoneRegex = /^\d{10}$/;
+
+    if (!formData.name || formData.name.trim().length < 2) errors.push('Full Name must be at least 2 characters.');
+    if (!phoneRegex.test(formData.phone)) errors.push('Phone Number must be exactly 10 digits.');
+    
+    const ageNum = parseInt(formData.age);
+    if (isNaN(ageNum) || ageNum < 16 || ageNum > 100) errors.push('Age must be between 16 and 100.');
+
+    if (!formData.college || formData.college.trim().length < 2) errors.push('College Name must be at least 2 characters.');
+    if (!formData.department || formData.department.trim().length < 2) errors.push('Department must be at least 2 characters.');
+    if (!formData.roll_number || formData.roll_number.trim().length < 1) errors.push('Roll Number is required.');
+    if (!formData.degree || formData.degree.trim().length < 2) errors.push('Degree must be at least 2 characters.');
+
+    if (!formData.emergency_name || formData.emergency_name.trim().length < 2) errors.push('Emergency Contact Name must be at least 2 characters.');
+    if (!phoneRegex.test(formData.emergency_phone)) errors.push('Emergency Contact Phone must be exactly 10 digits.');
+
+    if (!formData.consent_wellbeing || !formData.consent_daily || !formData.consent_counselor || !formData.consent_emergency || !formData.consent_peer) {
+      errors.push('You must provide all consents to use the platform.');
+    }
+
+    return errors;
+  };
+
   const handleCompleteProfile = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
-    // Validate consents
-    if (!formData.consent_wellbeing || !formData.consent_daily || !formData.consent_counselor || !formData.consent_emergency || !formData.consent_peer) {
-      setError("You must provide all consents to use the platform.");
+    // Frontend validation
+    const validationErrors = validateForm();
+    if (validationErrors.length > 0) {
+      setError(validationErrors.join(' '));
       setLoading(false);
       return;
     }
@@ -121,11 +147,16 @@ function StudentSignUp() {
   if (!user) {
     return (
       <Container className="full-height" style={{ padding: '4rem 1rem' }}>
-        <div className="auth-card" style={{ maxWidth: '480px' }}>
-          <h1 className="auth-header">
+        <div className="auth-card" style={{ maxWidth: '480px', position: 'relative' }}>
+          
+          <Link to="/" style={{ position: 'absolute', top: '1.5rem', left: '1.5rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '5px', textDecoration: 'none', fontWeight: 'bold' }}>
+            <Icon name="arrow left" /> Back
+          </Link>
+
+          <h1 className="auth-header" style={{ marginTop: '1rem' }}>
             Student Registration
           </h1>
-          <p className="auth-subheader">Sign up securely with your Google account.</p>
+          <p className="auth-subheader">Step 1: Link your Google account securely.</p>
           
           <Button 
             color='google plus' 
@@ -133,9 +164,10 @@ function StudentSignUp() {
             size='large' 
             onClick={handleGoogleSignUp}
             loading={loading}
-            style={{ padding: '1.2rem', fontSize: '1.1rem', borderRadius: '12px' }}
+            disabled={loading}
+            style={{ marginBottom: '1.5rem', padding: '1.2rem', fontSize: '1.1rem', borderRadius: '12px' }}
           >
-            <Icon name='google' /> Sign up with Google
+            <Icon name='google' /> Link Google Account (Step 1)
           </Button>
           
           {error && <Message error content={error} style={{ marginTop: '1rem' }} />}
