@@ -139,20 +139,30 @@ const promoteToAdmin = async (req, res) => {
   const client = await db.getClient();
   try {
     // Step 1: Look up auth user by email via Supabase Admin API
-    const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers();
-    if (authError) {
-      console.error('Supabase admin listUsers error:', authError);
-      return res.status(500).json({ error: 'Failed to look up user.' });
-    }
+    const normalizedEmail = email.trim().toLowerCase();
 
-    const authUser = authUsers.users.find(
-      u => u.email?.toLowerCase() === email.trim().toLowerCase()
-    );
+    let authUser = null;
+    let page = 1;
+    const perPage = 100;
+
+    while (!authUser) {
+      const { data, error: authError } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+      if (authError) {
+        console.error('Supabase admin listUsers error:', authError);
+        return res.status(500).json({ error: 'Failed to look up user.' });
+      }
+
+      const users = data?.users || [];
+      authUser = users.find(u => u.email?.toLowerCase() === normalizedEmail) || null;
+
+      // If we got fewer than perPage results, we've reached the end.
+      if (users.length < perPage) break;
+      page += 1;
+    }
 
     if (!authUser) {
       return res.status(404).json({ error: 'No account found with that email address.' });
     }
-
     // Step 2: Check if they exist in our users table
     const userResult = await client.query(
       `SELECT id, role FROM users WHERE id = $1 AND deleted_at IS NULL`,
