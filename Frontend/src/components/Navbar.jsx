@@ -77,6 +77,9 @@ function Navbar() {
                   <Menu.Item as={Link} to="/community" active={location.pathname === '/community'} name="Community" onClick={toggleMobileMenu} />
                 </>
               )}
+              {role === 'counselor' && (
+                <Menu.Item as={Link} to="/dashboard" active={location.pathname === '/dashboard'} name="Dashboard" onClick={toggleMobileMenu} />
+              )}
               {role === 'admin' && (
                 <Menu.Item as={Link} to="/admin" active={location.pathname === '/admin'} onClick={toggleMobileMenu}>
                   <Icon name="shield" /> Admin
@@ -117,6 +120,9 @@ function Navbar() {
             <Menu.Item as={Link} to="/counselor" active={location.pathname === '/counselor'} name="Counselor" />
             <Menu.Item as={Link} to="/community" active={location.pathname === '/community'} name="Community" />
           </>
+        )}
+        {role === 'counselor' && (
+          <Menu.Item as={Link} to="/dashboard" active={location.pathname === '/dashboard'} name="Dashboard" />
         )}
         {role === 'admin' && (
           <Menu.Item as={Link} to="/admin" active={location.pathname === '/admin'}>

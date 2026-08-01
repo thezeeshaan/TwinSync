@@ -15,6 +15,15 @@ const requestSession = async (req, res) => {
 
   const client = await db.getClient();
   try {
+    // Check if the user is a student/admin in the users table
+    const userCheck = await client.query(
+      `SELECT id FROM users WHERE id = $1 AND deleted_at IS NULL`,
+      [userId]
+    );
+    if (userCheck.rows.length === 0) {
+      return res.status(403).json({ error: 'Only students can request a counseling session.' });
+    }
+
     // Check if student already has a waiting or active session
     const activeCheck = await client.query(
       `SELECT id, status FROM counselor_sessions 
@@ -388,10 +397,21 @@ const getCounselorProfile = async (req, res) => {
  * Returns all waiting sessions (for counselors to pick up).
  */
 const getWaitingSessions = async (req, res) => {
+  const counselorId = req.authUser.id;
   const client = await db.getClient();
   try {
+    // Verify this is a verified counselor
+    const counselorCheck = await client.query(
+      `SELECT id FROM counselors 
+       WHERE id = $1 AND verification_status = 'verified' AND deleted_at IS NULL`,
+      [counselorId]
+    );
+    if (counselorCheck.rows.length === 0) {
+      return res.status(403).json({ error: 'Only verified counselors can view waiting sessions' });
+    }
+
     const result = await client.query(
-      `SELECT id AS session_id, user_id, started_at
+      `SELECT id AS session_id, started_at
        FROM counselor_sessions
        WHERE status = 'waiting' AND counselor_id IS NULL
        ORDER BY started_at ASC`
@@ -416,14 +436,14 @@ const acceptSession = async (req, res) => {
 
   const client = await db.getClient();
   try {
-    // Verify this is a verified counselor
+    // Verify this is a verified counselor who is currently available
     const counselorCheck = await client.query(
       `SELECT id FROM counselors 
-       WHERE id = $1 AND verification_status = 'verified' AND deleted_at IS NULL`,
+       WHERE id = $1 AND verification_status = 'verified' AND is_available = true AND deleted_at IS NULL`,
       [counselorId]
     );
     if (counselorCheck.rows.length === 0) {
-      return res.status(403).json({ error: 'Only verified counselors can accept sessions' });
+      return res.status(403).json({ error: 'Only verified and available counselors can accept sessions' });
     }
 
     // Claim the waiting session (atomic — prevents race conditions)
