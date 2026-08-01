@@ -4,7 +4,8 @@ const { verifySupabaseToken } = require('../middleware/verifySupabaseToken');
 const {
   getPendingCounselors,
   getAllCounselors,
-  verifyCounselor
+  verifyCounselor,
+  promoteToAdmin
 } = require('../controllers/adminController');
 
 // Middleware: verify token + check admin role
@@ -36,5 +37,8 @@ router.use(verifyAdmin);
 router.get('/counselors/pending', getPendingCounselors);
 router.get('/counselors/all', getAllCounselors);
 router.put('/counselors/:counselorId/verify', verifyCounselor);
+
+// Admin promotion
+router.put('/promote', promoteToAdmin);
 
 module.exports = router;

@@ -1,4 +1,11 @@
 const db = require('../config/db');
+const { createClient } = require('@supabase/supabase-js');
+
+// Supabase admin client (service_role — can list auth users by email)
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 /**
  * GET /api/admin/counselors/pending
@@ -111,8 +118,79 @@ const verifyCounselor = async (req, res) => {
     client.release();
   }
 };
+
+/**
+ * PUT /api/admin/promote
+ * Promote a student to Campus Admin by their email address.
+ * Body: { email: 'user@example.com' }
+ * 
+ * Flow:
+ * 1. Look up the auth user by email via Supabase Admin API
+ * 2. Verify they exist in our `users` table with role = 'student'
+ * 3. Update their role to 'admin'
+ */
+const promoteToAdmin = async (req, res) => {
+  const { email } = req.body;
+
+  if (!email || typeof email !== 'string' || !email.includes('@')) {
+    return res.status(400).json({ error: 'A valid email address is required.' });
+  }
+
+  const client = await db.getClient();
+  try {
+    // Step 1: Look up auth user by email via Supabase Admin API
+    const { data: authUsers, error: authError } = await supabaseAdmin.auth.admin.listUsers();
+    if (authError) {
+      console.error('Supabase admin listUsers error:', authError);
+      return res.status(500).json({ error: 'Failed to look up user.' });
+    }
+
+    const authUser = authUsers.users.find(
+      u => u.email?.toLowerCase() === email.trim().toLowerCase()
+    );
+
+    if (!authUser) {
+      return res.status(404).json({ error: 'No account found with that email address.' });
+    }
+
+    // Step 2: Check if they exist in our users table
+    const userResult = await client.query(
+      `SELECT id, role FROM users WHERE id = $1 AND deleted_at IS NULL`,
+      [authUser.id]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'This email is not registered as a student on TwinSync.' });
+    }
+
+    const user = userResult.rows[0];
+
+    if (user.role === 'admin') {
+      return res.status(400).json({ error: 'This user is already a Campus Admin.' });
+    }
+
+    // Step 3: Promote to admin
+    await client.query(
+      `UPDATE users SET role = 'admin', updated_at = NOW() WHERE id = $1`,
+      [authUser.id]
+    );
+
+    res.json({ 
+      message: `User promoted to Campus Admin successfully.`,
+      promoted_user_id: authUser.id
+    });
+  } catch (error) {
+    console.error('Error promoting user:', error);
+    res.status(500).json({ error: 'Failed to promote user.' });
+  } finally {
+    client.release();
+  }
+};
+
 module.exports = {
   getPendingCounselors,
   getAllCounselors,
-  verifyCounselor
+  verifyCounselor,
+  promoteToAdmin
 };
+

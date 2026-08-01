@@ -13,6 +13,11 @@ function AdminPanel() {
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
 
+  // Promote Admin state
+  const [promoteEmail, setPromoteEmail] = useState('');
+  const [promoteLoading, setPromoteLoading] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
   const getAuthHeaders = async () => {
@@ -90,6 +95,32 @@ function AdminPanel() {
     if (status === 'verified') return 'admin-badge verified';
     if (status === 'rejected') return 'admin-badge rejected';
     return 'admin-badge pending';
+  };
+
+  const handlePromoteAdmin = async () => {
+    setShowConfirm(false);
+    setPromoteLoading(true);
+    setError(null);
+    setSuccessMsg(null);
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`${API_URL}/api/admin/promote`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ email: promoteEmail.trim() })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSuccessMsg(data.message);
+        setPromoteEmail('');
+      } else {
+        setError(data.error || 'Promotion failed');
+      }
+    } catch (err) {
+      setError('Failed to promote user.');
+    } finally {
+      setPromoteLoading(false);
+    }
   };
 
   if (role !== 'admin') {
@@ -247,6 +278,60 @@ function AdminPanel() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+          </div>
+
+          {/* ========== PROMOTE ADMIN ========== */}
+          <div className="admin-section" style={{ marginTop: '2rem' }}>
+            <h3 style={{ color: 'var(--text-primary)', marginBottom: '1rem' }}>
+              <Icon name="user plus" style={{ color: '#8b5cf6' }} /> Promote Student to Admin
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9em', marginBottom: '1rem' }}>
+              Enter the email of a registered student to promote them to Campus Admin.
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <input
+                type="email"
+                placeholder="student@example.com"
+                value={promoteEmail}
+                onChange={(e) => setPromoteEmail(e.target.value)}
+                style={{
+                  flex: 1, minWidth: '220px', padding: '0.7rem 1rem',
+                  borderRadius: '8px', border: '1px solid var(--border-color, #333)',
+                  backgroundColor: 'var(--bg-secondary, #1a1a2e)', color: 'var(--text-primary, #fff)',
+                  fontSize: '0.95rem', outline: 'none'
+                }}
+              />
+              <button
+                className="admin-action-btn approve"
+                disabled={!promoteEmail.includes('@') || promoteLoading}
+                onClick={() => setShowConfirm(true)}
+                style={{ minWidth: '140px' }}
+              >
+                {promoteLoading ? <Loader active inline size="tiny" /> : <><Icon name="arrow up" /> Promote</>}
+              </button>
+            </div>
+
+            {/* Confirmation Modal */}
+            {showConfirm && (
+              <div style={{
+                marginTop: '1rem', padding: '1.25rem', borderRadius: '12px',
+                border: '1px solid #f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.08)'
+              }}>
+                <p style={{ margin: 0, marginBottom: '0.75rem', color: 'var(--text-primary)' }}>
+                  <Icon name="warning sign" style={{ color: '#f59e0b' }} />
+                  Are you sure you want to promote <strong>{promoteEmail}</strong> to Campus Admin?
+                  This action cannot be undone from the admin panel.
+                </p>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button className="admin-action-btn approve" onClick={handlePromoteAdmin}>
+                    <Icon name="check" /> Yes, Promote
+                  </button>
+                  <button className="admin-action-btn reject" onClick={() => setShowConfirm(false)}>
+                    <Icon name="close" /> Cancel
+                  </button>
+                </div>
               </div>
             )}
           </div>

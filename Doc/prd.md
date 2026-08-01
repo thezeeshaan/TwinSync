@@ -9,8 +9,9 @@ The platform has **two completely separate sign-up flows** ("Sign Up as Student"
 *   **Student:** The primary end-user. Students use the platform for daily check-ins, AI assessments, anonymous 1-on-1 peer support, and anonymous counseling. Stored in the `users` table.
 *   **Counselor:** Verified mental health professionals who provide 1-on-1 anonymous text-based counseling to students. Stored in a **separate `counselors` table** with an independent auth flow.
 *   **Campus Admin (Student):** A student promoted to admin within their institute.
-    *   *Provisioning:* All Campus Admins are assigned directly in the database by the project creator (setting `role = 'admin'`). In-app role promotion is intentionally excluded because student identities are anonymous — an admin cannot identify who to promote.
-    *   *Duties:* Primary role is to verify the credentials and identity of new counselors for their specific college.
+    *   *Provisioning:* The **first** Campus Admin for each institute is assigned directly in the database by the project creator (setting `role = 'admin'`). Subsequent admins can be promoted **in-app** by an existing Campus Admin using the "Promote Admin" feature.
+    *   *Promote Admin (In-App):* An existing Campus Admin enters the email address of a registered student. The system looks up the user via Supabase Auth by email, verifies they exist in the `users` table, and promotes their role from `student` to `admin`. This preserves anonymity — the admin never sees a list of users; they must already know the person's email externally. A confirmation dialog is shown before the promotion is executed. Demotion is not supported in the current version.
+    *   *Duties:* Primary role is to verify the credentials and identity of new counselors for their specific college, and to promote trusted students to co-admin roles.
 *   **Faculty Advisor:** A college professor or academic advisor. In the prototype, their contact details are provided manually by the student during registration. In the future, this data will be fetched from the college ERP. They receive automated emergency alerts.
 
 ## 3. User Registration, ERP Sync & Verification Flow
