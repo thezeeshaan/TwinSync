@@ -253,14 +253,21 @@ async function sendInsightMessage(req, res) {
       return res.status(403).json({ error: 'Session not found or access denied.' });
     }
 
+    const safeHistory = Array.isArray(history) ? history : [];
+    const hasCurrentUserTurnInHistory =
+      safeHistory.length > 0 &&
+      safeHistory[safeHistory.length - 1]?.role === 'user' &&
+      safeHistory[safeHistory.length - 1]?.content === message;
+    const trimmedHistory = hasCurrentUserTurnInHistory ? safeHistory.slice(0, -1) : safeHistory;
+
     // Count student turns including the current message
-    const studentTurnCount = history.filter(m => m.role === 'user').length + 1;
+    const studentTurnCount = trimmedHistory.filter(m => m.role === 'user').length + 1;
 
     // Build the phase-specific system prompt
     const systemPrompt = buildInsightsPrompt(studentTurnCount);
 
     // Format history for OpenAI-compatible API (Groq)
-    const formattedHistory = history.map(m => ({
+    const formattedHistory = trimmedHistory.map(m => ({
       role: m.role === 'user' ? 'user' : 'assistant',
       content: m.content,
     }));
@@ -317,16 +324,33 @@ async function sendInsightMessage(req, res) {
 async function endInsights(req, res) {
   try {
     const { session_id, history, pss_scores, pss_total } = req.body;
+    const userId = req.authUser.id;
+    const safeHistory = Array.isArray(history) ? history : [];
+    const parsedPssTotal = Number(pss_total);
+    const clampedPssTotal = Number.isFinite(parsedPssTotal)
+      ? Math.min(40, Math.max(0, Math.round(parsedPssTotal)))
+      : null;
 
-    const conversationText = history.map(m => `${m.role}: ${m.content}`).join('\n');
+    const sessionResult = await pool.query(
+      `SELECT status FROM ai_sessions WHERE id = $1 AND user_id = $2`,
+      [session_id, userId]
+    );
+    if (sessionResult.rows.length === 0) {
+      return res.status(403).json({ error: 'Session not found or access denied.' });
+    }
+    if (sessionResult.rows[0].status === 'completed') {
+      return res.status(400).json({ error: 'Session already completed.' });
+    }
+
+    const conversationText = safeHistory.map(m => `${m.role}: ${m.content}`).join('\n');
 
     // Determine risk level internally — NEVER sent to student frontend
     let risk_level = 'low';
-    if (pss_total >= 14 && pss_total <= 33) risk_level = 'moderate';
-    if (pss_total >= 34) risk_level = 'high';
+    if (clampedPssTotal >= 14 && clampedPssTotal <= 33) risk_level = 'moderate';
+    if (clampedPssTotal >= 34) risk_level = 'high';
 
-    const adviceContext = pss_total != null
-      ? `The student's stress score is ${pss_total}/40 (${risk_level} level). Tailor your response accordingly.`
+    const adviceContext = clampedPssTotal != null
+      ? `The student's stress score is ${clampedPssTotal}/40 (${risk_level} level). Tailor your response accordingly.`
       : '';
 
     // Ask AI for a warm summary paragraph + actionable bullet suggestions
@@ -373,14 +397,17 @@ Be warm and encouraging. Do not mention scores, numbers, or risk levels.`;
     }
 
     // Normalise distress_level: pss_total is 0–40, distress_level column is 0–10
-    const distressForDb = pss_total != null ? Math.round((pss_total / 40) * 10) : 0;
+    const distressForDb = clampedPssTotal != null ? Math.round((clampedPssTotal / 40) * 10) : 0;
 
     // Save to DB — risk_level goes to backend only, never returned to frontend
     await pool.query(
       `UPDATE ai_sessions
-       SET status = $1, summary = $2, distress_level = $3, ended_at = NOW()
-       WHERE id = $4`,
-      [risk_level === 'high' ? 'emergency_flagged' : 'completed', summary, distressForDb, session_id]
+       SET status = CASE WHEN status = 'emergency_flagged' THEN status ELSE $1 END,
+           summary = $2,
+           distress_level = GREATEST(COALESCE(distress_level, 0), $3),
+           ended_at = NOW()
+       WHERE id = $4 AND user_id = $5`,
+      [risk_level === 'high' ? 'emergency_flagged' : 'completed', summary, distressForDb, session_id, userId]
     );
 
     // Return summary + suggestions only — NO risk_level, NO pss_total to frontend

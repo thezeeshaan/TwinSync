@@ -235,12 +235,17 @@ export default function CheckIn() {
 
     // Fresh start — ask AI for the opening message
     setLoading(true);
-    const res = await sendCheckinMessage([], ld || lifestyle);
-    const initialMsgs = [{ role: 'ai', content: res.reply }];
-    setMessages(initialMsgs);
-    if (uid) saveMessages(uid, initialMsgs);
-    setLoading(false);
-    setTimeout(() => inputRef.current?.focus(), 150);
+    try {
+      const res = await sendCheckinMessage([], ld || lifestyle);
+      const initialMsgs = [{ role: 'ai', content: res.reply }];
+      setMessages(initialMsgs);
+      if (uid) saveMessages(uid, initialMsgs);
+      setTimeout(() => inputRef.current?.focus(), 150);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -261,22 +266,27 @@ export default function CheckIn() {
     setInput('');
     setLoading(true);
 
-    const res = await sendCheckinMessage(updated, lifestyle);
+    try {
+      const res = await sendCheckinMessage(updated, lifestyle);
 
-    if (res.isComplete) {
-      const done = await completeCheckin(updated);
-      const withReply = [...updated, { role: 'ai', content: res.reply }];
-      setMessages(withReply);
-      setAdviceCard(done.advice);
-      setStreak(done.streak || streak);
-      // Clear localStorage — check-in is complete, no need to resume
-      if (userId) clearMessages(userId);
-    } else {
-      const withReply = [...updated, { role: 'ai', content: res.reply }];
-      setMessages(withReply);
-      if (userId) saveMessages(userId, withReply);
+      if (res.isComplete) {
+        const done = await completeCheckin(updated);
+        const withReply = [...updated, { role: 'ai', content: res.reply }];
+        setMessages(withReply);
+        setAdviceCard(done.advice);
+        setStreak(done.streak || streak);
+        // Clear localStorage — check-in is complete, no need to resume
+        if (userId) clearMessages(userId);
+      } else {
+        const withReply = [...updated, { role: 'ai', content: res.reply }];
+        setMessages(withReply);
+        if (userId) saveMessages(userId, withReply);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const userCount    = messages.filter(m => m.role === 'user').length;

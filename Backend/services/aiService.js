@@ -34,12 +34,14 @@ const AI_BASE_URL = process.env.AI_BASE_URL || 'https://api.groq.com/openai/v1';
 const AI_MODEL    = process.env.AI_MODEL    || 'llama-3.3-70b-versatile';
 
 if (!AI_API_KEY) {
-  throw new Error('[AI Service] No API key found. Set AI_API_KEY in .env');
+  console.warn('[AI Service] AI_API_KEY is missing. Running in Offline Dev Mode.');
 }
 
-const client = new OpenAI({ apiKey: AI_API_KEY, baseURL: AI_BASE_URL });
+const client = AI_API_KEY ? new OpenAI({ apiKey: AI_API_KEY, baseURL: AI_BASE_URL }) : null;
 
-console.log(`[AI Service] Provider: ${AI_BASE_URL} | Model: ${AI_MODEL}`);
+if (client) {
+  console.log(`[AI Service] Provider: ${AI_BASE_URL} | Model: ${AI_MODEL}`);
+}
 
 // ─────────────────────────────────────────────────────────────
 // DEV MOCK FALLBACK
@@ -90,6 +92,7 @@ function toOpenAIMessages(systemPrompt, history, userMessage) {
  * @returns {Promise<string>}   - AI's text reply
  */
 async function chat(systemPrompt, history, userMessage) {
+  if (!client) return MOCK_TEXT;
   try {
     const messages  = toOpenAIMessages(systemPrompt, history, userMessage);
     const response  = await client.chat.completions.create({ model: AI_MODEL, messages });
@@ -110,6 +113,7 @@ async function chat(systemPrompt, history, userMessage) {
  * @returns {Promise<Object>}
  */
 async function chatJSON(systemPrompt, history, userMessage) {
+  if (!client) return MOCK_JSON;
   try {
     const jsonSystemPrompt = `${systemPrompt}\n\nIMPORTANT: You MUST reply with valid JSON only. No markdown, no code fences, no explanation. Just the raw JSON object.`;
     const messages = toOpenAIMessages(jsonSystemPrompt, history, userMessage);

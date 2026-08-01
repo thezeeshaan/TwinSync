@@ -172,7 +172,7 @@ All 21 migrations have run. Full schema in `Doc/table.md`.
 | `lifestyle_profiles` | `user_id`, `dietary_pref`, `meals_per_day`, `uses_smoking`, `uses_tobacco`, `uses_alcohol`, `sleep_hours`, `sleep_quality`, `activity_type[]`, `activity_freq` | CheckIn, Insights |
 | `check_ins` | `user_id`, `question`, `response`, `mood_score` (nullable), `check_in_date` (UNIQUE with user_id) | CheckIn |
 | `daily_recommendations` | `user_id`, `check_in_id`, `content`, `category`, `recommendation_date` | CheckIn, Insights |
-| `ai_sessions` | `user_id`, `status` (`active`/`completed`/`emergency_flagged`), `distress_level`, `summary`, `suggestions[]`, `pss_scores` (JSONB), `pss_total`, `started_at`, `ended_at` | Insights |
+| `ai_sessions` | `id`, `user_id`, `status` (`active`/`completed`/`emergency_flagged`), `summary`, `distress_level`, `started_at`, `ended_at` | Insights |
 | `ai_messages` | `session_id`, `sender` (`ai`/`student`), `content`, `created_at` | Insights |
 
 ---

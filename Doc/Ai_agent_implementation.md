@@ -2,6 +2,8 @@
 ## Check-In & Insights (Pillar 1 & 2)
 
 > **Purpose of this document:** A complete, self-contained guide. Any developer who reads this from top to bottom will know exactly which files to create, which to modify, what code to write, and why — without needing to ask anyone.
+>
+> **Note:** TwinSync now uses `Backend/services/aiService.js` with an OpenAI-compatible provider (`AI_API_KEY`, `AI_BASE_URL`, `AI_MODEL`). Use this provider configuration in setup steps.
 
 ---
 
@@ -12,7 +14,7 @@ Two AI-powered chat pages:
 | Feature | What it does |
 |---|---|
 | **Check In** | Daily mental wellness check-in. AI asks 5 fixed questions + adaptive follow-ups. Ends with a personalized tip. Tracks streaks. |
-| **Insights** | Open-ended AI conversation that assesses the student across **10 PSS dimensions** (Perceived Stress Scale) through natural chat. After a warm-up phase, Gemini systematically explores all 10 dimensions, scores each 0–4, computes a total stress score (0–40), and provides personalized advice or flags distress. |
+| **Insights** | Open-ended AI conversation that assesses the student across **10 PSS dimensions** (Perceived Stress Scale) through natural chat. After a warm-up phase, the AI systematically explores all 10 dimensions, scores each 0–4, computes a total stress score (0–40), and provides personalized advice or flags distress. |
 
 **Shared gate (for both):** Before either chat opens, the app checks if the user has filled their **lifestyle profile** (diet, sleep, activity etc.). If not, a tap-only onboarding modal appears first. Fill it once → never see it again.
 
@@ -25,7 +27,7 @@ Two AI-powered chat pages:
 | Frontend | React + Vite (JSX), Semantic UI React |
 | Backend | Node.js + Express (CommonJS) |
 | Database | PostgreSQL via Supabase |
-| AI | Google Gemini API (`@google/generative-ai` npm package) |
+| AI | OpenAI-compatible API client (`openai` npm package) |
 | Auth | Supabase JWT (`verifySupabaseToken` middleware already exists) |
 
 ---
@@ -35,15 +37,15 @@ Two AI-powered chat pages:
 Before implementing, make sure these are in `Backend/.env`:
 
 ```env
-GEMINI_API_KEY=your_gemini_api_key_here
+AI_API_KEY=your_provider_api_key_here
+AI_BASE_URL=https://api.groq.com/openai/v1
+AI_MODEL=llama-3.3-70b-versatile
 ```
 
-Get it free from: https://aistudio.google.com → Get API Key → Create API Key
-
-Also install the Gemini package in the Backend:
+Also install the OpenAI-compatible SDK in the Backend:
 ```bash
 cd Backend
-npm install @google/generative-ai
+npm install openai
 ```
 
 ---
@@ -56,8 +58,8 @@ Below is the COMPLETE map of every file that will be **created (NEW)** or **modi
 TwinSync/
 ├── Backend/
 │   ├── index.js                                  ← EDIT (register new routes)
-│   ├── package.json                              ← EDIT (add @google/generative-ai)
-│   ├── .env                                      ← EDIT (add GEMINI_API_KEY)
+│   ├── package.json                              ← EDIT (add openai)
+│   ├── .env                                      ← EDIT (add AI_API_KEY/AI_BASE_URL/AI_MODEL)
 │   ├── migration/
 │   │   └── 021_create_lifestyle_profiles.sql     ← NEW (DB table for lifestyle data)
 │   ├── routes/
@@ -69,7 +71,7 @@ TwinSync/
 │   │   ├── checkinController.js                  ← NEW (business logic for check-in)
 │   │   └── insightsController.js                 ← NEW (business logic for insights)
 │   ├── services/
-│   │   └── geminiService.js                      ← NEW (shared Gemini AI helper)
+│   │   └── aiService.js                          ← NEW (shared OpenAI-compatible AI helper)
 │   └── middleware/
 │       └── verifySupabaseToken.js                (untouched — already works)
 │
@@ -120,12 +122,12 @@ CREATE TABLE IF NOT EXISTS lifestyle_profiles (
 
 ### File: `Backend/package.json` (EDIT)
 
-Add `@google/generative-ai` to the dependencies object:
+Add `openai` to the dependencies object:
 
 ```json
 "dependencies": {
   "@supabase/supabase-js": "^2.111.0",
-  "@google/generative-ai": "^0.21.0",
+  "openai": "^4.104.0",
   "cors": "^2.8.6",
   "dotenv": "^17.4.2",
   "express": "^5.2.1",
@@ -137,54 +139,36 @@ Then run in terminal: `cd Backend && npm install`
 
 ---
 
-## 7. Backend — Gemini Service
+## 7. Backend — AI Service
 
-### File: `Backend/services/geminiService.js` (NEW)
+### File: `Backend/services/aiService.js` (NEW)
 
-**What it does:** A shared helper module. Both checkinController and insightsController import this to talk to the Gemini API. Keeps Gemini setup in one place.
+**What it does:** A shared helper module. Both checkinController and insightsController import this to talk to an OpenAI-compatible provider. Keeps provider setup in one place.
 
 ```js
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const OpenAI = require('openai');
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const client = new OpenAI({
+  apiKey: process.env.AI_API_KEY,
+  baseURL: process.env.AI_BASE_URL,
+});
 
-/**
- * Send a prompt to Gemini and get a plain text reply.
- * @param {string} systemPrompt - Instructions for Gemini's behavior
- * @param {Array}  history      - Array of {role, parts} for conversation history
- * @param {string} userMessage  - The latest user message
- * @returns {Promise<string>}   - Gemini's text reply
- */
+const AI_MODEL = process.env.AI_MODEL || 'llama-3.3-70b-versatile';
+
 async function chat(systemPrompt, history, userMessage) {
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash',
-    systemInstruction: systemPrompt,
-  });
-
-  const chatSession = model.startChat({ history });
-  const result = await chatSession.sendMessage(userMessage);
-  return result.response.text();
+  const messages = [{ role: 'system', content: systemPrompt }, ...history, { role: 'user', content: userMessage }];
+  const response = await client.chat.completions.create({ model: AI_MODEL, messages });
+  return response.choices[0].message.content;
 }
 
-/**
- * Send a prompt and get a JSON reply.
- * Gemini is told to return JSON. We parse and return it.
- * @param {string} systemPrompt
- * @param {Array}  history
- * @param {string} userMessage
- * @returns {Promise<Object>}
- */
 async function chatJSON(systemPrompt, history, userMessage) {
-  const model = genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash',
-    systemInstruction: systemPrompt,
-    generationConfig: { responseMimeType: 'application/json' },
+  const messages = [{ role: 'system', content: systemPrompt }, ...history, { role: 'user', content: userMessage }];
+  const response = await client.chat.completions.create({
+    model: AI_MODEL,
+    messages,
+    response_format: { type: 'json_object' },
   });
-
-  const chatSession = model.startChat({ history });
-  const result = await chatSession.sendMessage(userMessage);
-  const text = result.response.text();
-  return JSON.parse(text);
+  return JSON.parse(response.choices[0].message.content);
 }
 
 module.exports = { chat, chatJSON };
@@ -226,7 +210,7 @@ module.exports = router;
 
 ### File: `Backend/controllers/checkinController.js` (NEW)
 
-**What it does:** Contains all the business logic for Check-In. Reads from/writes to the database, calls Gemini, and returns responses to the frontend.
+**What it does:** Contains all the business logic for Check-In. Reads from/writes to the database, calls the AI service, and returns responses to the frontend.
 
 ```js
 const { Pool } = require('pg');
@@ -353,8 +337,8 @@ async function sendCheckinMessage(req, res) {
       return res.json({ reply: nextQuestion, isComplete: false });
     }
 
-    // After 5 answers — Gemini takes over for adaptive follow-ups
-    // Build conversation history for Gemini format
+    // After 5 answers — AI takes over for adaptive follow-ups
+    // Build conversation history for provider format
     const history = messages.slice(0, -1).map(m => ({
       role: m.role === 'user' ? 'user' : 'model',
       parts: [{ text: m.content }],
@@ -377,7 +361,7 @@ IMPORTANT: Reply in this JSON format:
     const lastUserMsg = messages[messages.length - 1].content;
     const geminiReply = await chat(systemPrompt, history, lastUserMsg);
 
-    // Try to parse JSON, fallback if Gemini doesn't return proper JSON
+    // Try to parse JSON, fallback if provider doesn't return proper JSON
     try {
       const parsed = JSON.parse(geminiReply);
       return res.json(parsed);
@@ -405,7 +389,7 @@ async function completeCheckin(req, res) {
     // Build a summary string from the conversation
     const summary = messages.map(m => `${m.role}: ${m.content}`).join('\n');
 
-    // Ask Gemini for a personalized wellness tip
+    // Ask AI for a personalized wellness tip
     const tipPrompt = `Based on this check-in conversation, write a single personalized wellness tip in 2-3 sentences. Be warm and encouraging. Do not use bullet points.\n\nConversation:\n${summary}`;
     const advice = await chat('You are a supportive mental health assistant.', [], tipPrompt);
 
@@ -481,9 +465,9 @@ module.exports = router;
 
 **What it does:** Manages the AI conversation in two phases:
 - **Phase 1 (Warm-up):** First 2–3 exchanges — light, open-ended surface questions so the student feels comfortable.
-- **Phase 2 (PSS-10 Assessment):** After warm-up, Gemini systematically explores all 10 Perceived Stress Scale dimensions through natural conversational questions. Each dimension is scored 0–4. Total score (0–40) determines advice tier.
+- **Phase 2 (PSS-10 Assessment):** After warm-up, the AI systematically explores all 10 Perceived Stress Scale dimensions through natural conversational questions. Each dimension is scored 0–4. Total score (0–40) determines advice tier.
 
-**PSS-10 Dimensions Gemini Must Cover:**
+**PSS-10 Dimensions the AI Must Cover:**
 ```
 1.  Perceived lack of control     — Feeling important situations are beyond one's control
 2.  Unpredictability of events    — Things feel unexpected, uncertain, hard to anticipate
@@ -565,7 +549,7 @@ RULES:
 
 // ─────────────────────────────────────────
 // POST /api/insights/start
-// Creates a new session, returns Gemini's opening question
+// Creates a new session, returns AI's opening question
 // Returns { session_id, reply }
 // ─────────────────────────────────────────
 async function startInsights(req, res) {
@@ -580,7 +564,7 @@ async function startInsights(req, res) {
     );
     const sessionId = sessionResult.rows[0].id;
 
-    // Get Gemini's opening question
+    // Get AI's opening question
     const geminiReply = await chatJSON(
       INSIGHTS_SYSTEM_PROMPT,
       [],
@@ -610,13 +594,13 @@ async function sendInsightMessage(req, res) {
   try {
     const { session_id, message, history } = req.body;
 
-    // Format history for Gemini
+    // Format history for AI provider
     const geminiHistory = history.map(m => ({
       role: m.role === 'user' ? 'user' : 'model',
       parts: [{ text: m.content }],
     }));
 
-    // Get Gemini's reply with distress score
+    // Get AI's reply with distress score
     const geminiReply = await chatJSON(INSIGHTS_SYSTEM_PROMPT, geminiHistory, message);
 
     // Save user message to DB
@@ -674,7 +658,7 @@ async function endInsights(req, res) {
       ? `The student's total PSS-10 score is ${pss_total}/40 (${risk_level} stress level).`
       : '';
 
-    // Ask Gemini for a personalized summary + advice
+    // Ask AI for a personalized summary + advice
     const summaryPrompt = `Based on this mental health check-in conversation, write:
 1. A warm 2-sentence summary of how the student is doing.
 2. Two specific, actionable suggestions appropriate to their stress level.
@@ -1258,7 +1242,7 @@ export default CheckIn;
 
 ### File: `Frontend/src/pages/Insights.jsx` (NEW)
 
-**What it does:** Open-ended AI conversation. Checks lifestyle gate same as CheckIn. No fixed questions — Gemini drives everything. Shows a distress banner if score ≥ 5. "End Session" shows a summary card.
+**What it does:** Open-ended AI conversation. Checks lifestyle gate same as CheckIn. No fixed questions — the AI drives everything. Shows a distress banner if score ≥ 5. "End Session" shows a summary card.
 
 ```jsx
 import React, { useState, useEffect, useRef } from 'react';
@@ -1518,9 +1502,9 @@ Follow this exact sequence. Each step depends on the previous.
 
 ```
 Step 1  → Run migration 021 (restart backend — it auto-runs)
-Step 2  → Install @google/generative-ai (npm install in Backend)
-Step 3  → Add GEMINI_API_KEY to Backend/.env
-Step 4  → Create Backend/services/geminiService.js
+Step 2  → Install openai (npm install in Backend)
+Step 3  → Add AI_API_KEY / AI_BASE_URL / AI_MODEL to Backend/.env
+Step 4  → Create Backend/services/aiService.js
 Step 5  → Create Backend/controllers/checkinController.js
 Step 6  → Create Backend/routes/checkinRoutes.js
 Step 7  → Create Backend/controllers/insightsController.js
@@ -1566,7 +1550,7 @@ Body: { "messages": [], "lifestyle": {"dietary_pref": "Vegetarian", ...} }
 4. If first time: lifestyle modal should appear
 5. Fill all sections → click Continue
 6. Chat should open with the first question
-7. Answer all 5 questions → Gemini follow-ups → advice card at end
+7. Answer all 5 questions → AI follow-ups → advice card at end
 
 ---
 
@@ -1574,8 +1558,8 @@ Body: { "messages": [], "lifestyle": {"dietary_pref": "Vegetarian", ...} }
 
 | Error | Cause | Fix |
 |---|---|---|
-| `GEMINI_API_KEY is not defined` | Missing env var | Add to `Backend/.env` |
+| `AI_API_KEY is not defined` | Missing env var | Add to `Backend/.env` |
 | `relation lifestyle_profiles does not exist` | Migration not run | Restart backend to auto-run migrations |
 | `401 Unauthorized` on API calls | JWT not sent | Check `getAuthHeader()` in `api.js` |
 | `Cannot read properties of null (reading 'access_token')` | Not logged in | Make sure user is authenticated first |
-| Gemini JSON parse error | Gemini returned plain text | `chatJSON` helper handles this; check prompt formatting |
+| AI JSON parse error | Provider returned plain text | `chatJSON` helper handles this; check prompt formatting |
