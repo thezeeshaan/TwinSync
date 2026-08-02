@@ -36,6 +36,7 @@ const insightsRoutes = require('./routes/insightsRoutes');
 const communityRoutes = require('./routes/communityRoutes');
 const counselorRoutes = require('./routes/counselorRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
 
 // Setup endpoint structure for our 4 pillars + admin
 app.use('/api/auth', authRoutes);
@@ -44,6 +45,7 @@ app.use('/api/insights', insightsRoutes);
 app.use('/api/counselor', counselorRoutes);
 app.use('/api/community', communityRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Add a test route
 app.get('/api/test', (req, res) => {

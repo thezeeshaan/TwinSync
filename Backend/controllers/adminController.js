@@ -197,10 +197,209 @@ const promoteToAdmin = async (req, res) => {
   }
 };
 
+// ============================================================
+// CONTENT MANAGEMENT — Courses & Events
+// ============================================================
+
+/**
+ * POST /api/admin/courses
+ * Add a new mental health course.
+ * Body: { title, description, content_url, thumbnail_url }
+ */
+const createCourse = async (req, res) => {
+  const { title, description, content_url, thumbnail_url } = req.body;
+
+  if (!title || !content_url) {
+    return res.status(400).json({ error: 'Title and Content URL are required.' });
+  }
+
+  const client = await db.getClient();
+  try {
+    const result = await client.query(
+      `INSERT INTO mental_health_courses (title, description, content_url, thumbnail_url)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, title, created_at`,
+      [title.trim(), description?.trim() || null, content_url.trim(), thumbnail_url?.trim() || null]
+    );
+
+    res.status(201).json({ message: 'Course added successfully.', course: result.rows[0] });
+  } catch (error) {
+    console.error('Error creating course:', error);
+    res.status(500).json({ error: 'Failed to add course.' });
+  } finally {
+    client.release();
+  }
+};
+
+/**
+ * DELETE /api/admin/courses/:id
+ * Delete a mental health course.
+ */
+const deleteCourse = async (req, res) => {
+  const { id } = req.params;
+  const client = await db.getClient();
+  try {
+    const result = await client.query(
+      `DELETE FROM mental_health_courses WHERE id = $1 RETURNING id, title`,
+      [id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Course not found.' });
+    }
+    res.json({ message: 'Course deleted.', course: result.rows[0] });
+  } catch (error) {
+    console.error('Error deleting course:', error);
+    res.status(500).json({ error: 'Failed to delete course.' });
+  } finally {
+    client.release();
+  }
+};
+
+/**
+ * PUT /api/admin/courses/:id
+ * Update an existing mental health course.
+ * Body: { title, description, content_url, thumbnail_url }
+ */
+const updateCourse = async (req, res) => {
+  const { id } = req.params;
+  const { title, description, content_url, thumbnail_url } = req.body;
+
+  if (!title || !content_url) {
+    return res.status(400).json({ error: 'Title and Content URL are required.' });
+  }
+
+  const client = await db.getClient();
+  try {
+    const result = await client.query(
+      `UPDATE mental_health_courses 
+       SET title = $1, description = $2, content_url = $3, thumbnail_url = $4
+       WHERE id = $5
+       RETURNING id, title`,
+      [title.trim(), description?.trim() || null, content_url.trim(), thumbnail_url?.trim() || null, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Course not found.' });
+    }
+
+    res.json({ message: 'Course updated successfully.', course: result.rows[0] });
+  } catch (error) {
+    console.error('Error updating course:', error);
+    res.status(500).json({ error: 'Failed to update course.' });
+  } finally {
+    client.release();
+  }
+};
+
+/**
+ * POST /api/admin/events
+ * Add a new campus event.
+ * Body: { title, description, event_date, location }
+ */
+const createEvent = async (req, res) => {
+  const adminId = req.authUser.id;
+  const { title, description, event_date, location } = req.body;
+
+  if (!title || !event_date) {
+    return res.status(400).json({ error: 'Title and Event Date are required.' });
+  }
+
+  // Get admin's institute_id for the FK
+  const client = await db.getClient();
+  try {
+    const adminRes = await client.query(`SELECT institute_id FROM users WHERE id = $1`, [adminId]);
+    const instituteId = adminRes.rows[0]?.institute_id;
+
+    if (!instituteId) {
+      return res.status(400).json({ error: 'Admin institute not found. Cannot create event.' });
+    }
+
+    const result = await client.query(
+      `INSERT INTO campus_events (title, description, event_date, location, institute_id, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, title, event_date, created_at`,
+      [title.trim(), description?.trim() || null, event_date, location?.trim() || null, instituteId, adminId]
+    );
+
+    res.status(201).json({ message: 'Event added successfully.', event: result.rows[0] });
+  } catch (error) {
+    console.error('Error creating event:', error);
+    res.status(500).json({ error: 'Failed to add event.' });
+  } finally {
+    client.release();
+  }
+};
+
+/**
+ * DELETE /api/admin/events/:id
+ * Delete a campus event.
+ */
+const deleteEvent = async (req, res) => {
+  const { id } = req.params;
+  const client = await db.getClient();
+  try {
+    const result = await client.query(
+      `DELETE FROM campus_events WHERE id = $1 RETURNING id, title`,
+      [id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Event not found.' });
+    }
+    res.json({ message: 'Event deleted.', event: result.rows[0] });
+  } catch (error) {
+    console.error('Error deleting event:', error);
+    res.status(500).json({ error: 'Failed to delete event.' });
+  } finally {
+    client.release();
+  }
+};
+
+/**
+ * PUT /api/admin/events/:id
+ * Update an existing campus event.
+ * Body: { title, description, event_date, location }
+ */
+const updateEvent = async (req, res) => {
+  const { id } = req.params;
+  const { title, description, event_date, location } = req.body;
+
+  if (!title || !event_date) {
+    return res.status(400).json({ error: 'Title and Event Date are required.' });
+  }
+
+  const client = await db.getClient();
+  try {
+    const result = await client.query(
+      `UPDATE campus_events 
+       SET title = $1, description = $2, event_date = $3, location = $4
+       WHERE id = $5
+       RETURNING id, title`,
+      [title.trim(), description?.trim() || null, event_date, location?.trim() || null, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Event not found.' });
+    }
+
+    res.json({ message: 'Event updated successfully.', event: result.rows[0] });
+  } catch (error) {
+    console.error('Error updating event:', error);
+    res.status(500).json({ error: 'Failed to update event.' });
+  } finally {
+    client.release();
+  }
+};
+
 module.exports = {
   getPendingCounselors,
   getAllCounselors,
   verifyCounselor,
-  promoteToAdmin
+  promoteToAdmin,
+  createCourse,
+  updateCourse,
+  deleteCourse,
+  createEvent,
+  updateEvent,
+  deleteEvent
 };
 

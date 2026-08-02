@@ -11,7 +11,8 @@ const {
   toggleAvailability,
   getCounselorProfile,
   getWaitingSessions,
-  acceptSession
+  acceptSession,
+  reconnectSession
 } = require('../controllers/counselorController');
 
 // All counselor routes require authentication
@@ -19,6 +20,7 @@ router.use(verifySupabaseToken);
 
 // Student-facing
 router.post('/request', requestSession);
+router.post('/reconnect/:sessionId', reconnectSession);
 router.post('/sessions/:sessionId/cancel', cancelSession);
 router.get('/sessions', getSessions);
 router.get('/sessions/:sessionId/messages', getSessionMessages);
