@@ -11,7 +11,7 @@ The platform has **two completely separate sign-up flows** ("Sign Up as Student"
 *   **Campus Admin (Student):** A student promoted to admin within their institute.
     *   *Provisioning:* The **first** Campus Admin for each institute is assigned directly in the database by the project creator (setting `role = 'admin'`). Subsequent admins can be promoted **in-app** by an existing Campus Admin using the "Promote Admin" feature.
     *   *Promote Admin (In-App):* An existing Campus Admin enters the email address of a registered student. The system looks up the user via Supabase Auth by email, verifies they exist in the `users` table, and promotes their role from `student` to `admin`. This preserves anonymity — the admin never sees a list of users; they must already know the person's email externally. A confirmation dialog is shown before the promotion is executed. Demotion is not supported in the current version.
-    *   *Duties:* Primary role is to verify the credentials and identity of new counselors for their specific college, and to promote trusted students to co-admin roles.
+    *   *Duties:* Verify counselor credentials, promote trusted students to co-admin roles, and manage platform content (mental health courses and campus events) via the Admin Panel (see Section 6.4).
 *   **Faculty Advisor:** A college professor or academic advisor. In the prototype, their contact details are provided manually by the student during registration. In the future, this data will be fetched from the college ERP. They receive automated emergency alerts.
 
 ## 3. User Registration, ERP Sync & Verification Flow
@@ -52,7 +52,8 @@ During onboarding, users must provide explicit opt-in consent for:
 
 ### 5.3 Counselor (Human-to-Human Chat)
 *   **Workflow:** 1-on-1 text-based counseling.
-*   **Matching Algorithm:** Purely random matching. A student requesting help is randomly paired with any currently available, verified counselor from the pool. (No manual preference selection by the student is required, as all counselors are pre-vetted by admins).
+*   **Matching Algorithm:** Purely random matching for new sessions. A student requesting help is randomly paired with any currently available, verified counselor from the pool.
+*   **Reconnection:** Students can reopen past, completed sessions via a "Reconnect" button. This places them back in the original counselor's active session or waiting queue, displaying a "Returning Student" badge to the counselor while strictly maintaining the student's anonymity.
 *   **Interface:** A secure chat interface maintaining strict anonymity for both the student and the counselor.
 
 ### 5.4 Community (Anonymous Peer Support DMs)
@@ -64,18 +65,40 @@ During onboarding, users must provide explicit opt-in consent for:
 
 ### 6.1 Global Upper Navbar
 *   **Left:** TwinSync Logo and Platform Name.
-*   **Center:** Links to the Four Pillars: `1. Check In` | `2. Insights` | `3. Counselor` | `4. Community`.
+*   **Center (Student/Admin):** Links to the Four Pillars: `1. Check In` | `2. Insights` | `3. Counselor` | `4. Community`.
+*   **Center (Counselor):** Links to `1. Check In` | `2. Insights` | `3. My Sessions`.
 *   **Right:** User Profile (User Name | Phone Number).
 
-### 6.2 Student Dashboard (Main Landing Page)
-Designed with a vertical scrolling flow:
-1.  **Hero/Motivation:** Prominent motivational quote and a brief platform description/welcome.
-2.  **Central Content Area:** Dynamic injection point for the currently selected feature from the navbar.
-3.  **Community Previews:** Side-by-side tiles showing active anonymous peer DMs for quick access.
-4.  **Mental Health Courses:** Feed of available educational resources.
-5.  **Campus Events:** Feed of upcoming campus mental health events.
-6.  **Daily Recommendation Feed:** Persistent feed of personalized daily wellness suggestions.
-7.  **Footer:** Standard links (Privacy, Terms, Help, Contact).
+### 6.2 Shared Dashboard (Main Landing Page)
+Designed with a vertical scrolling flow, shared by both Students and Counselors:
+1.  **Hero/Motivational Quote:** A prominent motivational quote displayed as a gradient card. 12 mental health and wellness quotes are hardcoded in the frontend. One quote is shown per day, rotating deterministically (day-of-year % 12). Includes a brief welcome message with the user's name.
+2.  **Feature Summary Cards (Pillars):** A responsive grid of 5 cards. Students see Check-In, Insights, Counselor, Community, and Platform Guide. Counselors see Check-In, Insights, My Sessions, and Platform Guide. Clicking a card navigates to the respective pillar or opens the guide modal.
+3.  **Daily Recommendation Feed:** A feed of personalized daily wellness suggestions. In the **prototype**, 5–6 hardcoded generic wellness tips are shown with a small info banner. Once the AI pipeline is connected, this section will dynamically pull from the `daily_recommendations` table.
+4.  **Mental Health Courses:** Feed of available educational resources (fetched from `mental_health_courses` table). Displayed as clean cards. Clicking a card opens a modal with full course details. Empty state shown if no courses exist.
+5.  **Campus Events:** Feed of upcoming campus mental health events. Displayed as simplified cards (date, title). Clicking an event card opens a rich modal with the full description, time, and location. Empty state shown if no events exist.
+6.  **Footer:** Standard links — Privacy Policy, Terms of Service, Help, and Contact.
+
+### 6.3 Platform Guide
+*   The onboarding guide is triggered manually by clicking the **"Platform Guide"** pillar card on the dashboard.
+*   Uses **modal dialogs** to walk the user through the platform's features:
+    *   What the core pillars do.
+    *   How anonymity works on the platform.
+    *   How to reach out for help (counselor matching, peer support).
+
+### 6.4 Admin Panel
+The Admin Panel (`/admin`) is the centralized management hub for Campus Admins. It contains:
+1.  **Counselor Verification:** Review and approve/reject pending counselor applications.
+2.  **All Counselors Overview:** Table view of all registered counselors with status and availability.
+3.  **Promote Student to Admin:** Email-based promotion (see Section 2 — Campus Admin).
+4.  **Manage Mental Health Courses:** Add new courses and **edit** or delete existing ones via embedded modal forms.
+5.  **Manage Campus Events:** Add new events and **edit** or delete existing ones via embedded modal forms.
+
+### 6.5 My Sessions (Counselor Hub)
+A dedicated working page for verified Counselors (`/my-sessions`) containing:
+1.  **Availability Toggle:** A switch to mark themselves as online/offline for receiving anonymous session requests.
+2.  **Waiting Queue:** A list of students currently waiting for support. Targeted returning students show a distinct badge.
+3.  **Active Sessions:** Ongoing chat sessions with students.
+4.  **Past Sessions:** A history of completed sessions.
 
 ## 7. Background Integrations & Emergency System
 
@@ -89,3 +112,4 @@ Designed with a vertical scrolling flow:
 
 ### 7.3 General Wellness Notifications
 *   Automated, lightweight reminders for general well-being (e.g., "Time to drink water", "Take a 5-minute screen break").
+
