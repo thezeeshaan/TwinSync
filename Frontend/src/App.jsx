@@ -14,6 +14,7 @@ import CommunityChat from './pages/CommunityChat';
 import Counselor from './pages/Counselor';
 import CounselorChat from './pages/CounselorChat';
 import AdminPanel from './pages/AdminPanel';
+import MySessions from './pages/MySessions';
 import './App.css';
 
 
@@ -26,18 +27,11 @@ function ProtectedRoute({ children }) {
 }
 
 // Only show ThemeToggle when the user is authenticated
-function AuthThemeToggle() {
-  const { user } = useAuth();
-  if (!user) return null;
-  return <ThemeToggle />;
-}
-
 function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
         <Router>
-          <AuthThemeToggle />
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/dashboard" element={
@@ -81,6 +75,11 @@ function App() {
             <Route path="/admin" element={
               <ProtectedRoute>
                 <AdminPanel />
+              </ProtectedRoute>
+            } />
+            <Route path="/my-sessions" element={
+              <ProtectedRoute>
+                <MySessions />
               </ProtectedRoute>
             } />
           </Routes>

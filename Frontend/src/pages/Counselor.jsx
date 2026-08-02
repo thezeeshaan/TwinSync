@@ -11,6 +11,7 @@ function Counselor() {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [requesting, setRequesting] = useState(false);
+  const [reconnecting, setReconnecting] = useState(null);
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
 
@@ -271,12 +272,11 @@ function Counselor() {
                 <div
                   key={session.session_id}
                   className="counselor-session-item past"
-                  onClick={() => navigate(`/counselor/chat/${session.session_id}`)}
                 >
-                  <div className="counselor-session-avatar past">
+                  <div className="counselor-session-avatar past" onClick={() => navigate(`/counselor/chat/${session.session_id}`)}>
                     <Icon name="user md" size="large" />
                   </div>
-                  <div className="community-item-content">
+                  <div className="community-item-content" onClick={() => navigate(`/counselor/chat/${session.session_id}`)} style={{ cursor: 'pointer' }}>
                     <div className="community-item-top">
                       <span className="community-alias">{session.peer_label}</span>
                       <span className="counselor-status-badge completed">Completed</span>
@@ -288,6 +288,45 @@ function Counselor() {
                       <span className="community-time">{timeAgo(session.ended_at || session.started_at)}</span>
                     </div>
                   </div>
+                  <button 
+                    className="admin-action-btn approve"
+                    style={{ 
+                      minWidth: 'auto', padding: '0.4rem 0.75rem', marginLeft: '0.5rem',
+                      fontSize: '0.8rem', borderRadius: '8px', whiteSpace: 'nowrap'
+                    }}
+                    disabled={reconnecting === session.session_id || activeSessions.length > 0 || waitingSessions.length > 0}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      setReconnecting(session.session_id);
+                      setError(null);
+                      setSuccessMsg(null);
+                      try {
+                        const headers = await getAuthHeaders();
+                        const res = await fetch(`${API_URL}/api/counselor/reconnect/${session.session_id}`, {
+                          method: 'POST',
+                          headers
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                          if (data.status === 'active') {
+                            setSuccessMsg('Reconnected with your previous counselor!');
+                            navigate(`/counselor/chat/${data.session_id}`);
+                          } else {
+                            setSuccessMsg(data.message);
+                            await fetchSessions();
+                          }
+                        } else {
+                          setError(data.error || 'Failed to reconnect');
+                        }
+                      } catch (err) {
+                        setError('Failed to reconnect with counselor');
+                      } finally {
+                        setReconnecting(null);
+                      }
+                    }}
+                  >
+                    <Icon name="redo" /> {reconnecting === session.session_id ? 'Reconnecting...' : 'Reconnect'}
+                  </button>
                 </div>
               ))}
             </div>
