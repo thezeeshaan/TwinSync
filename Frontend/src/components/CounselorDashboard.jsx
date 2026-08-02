@@ -197,7 +197,17 @@ function CounselorDashboard() {
                   <Icon name="user outline" size="large" />
                 </div>
                 <div>
-                  <div className="community-alias">Anonymous Student</div>
+                  <div className="community-alias">
+                    Anonymous Student
+                    {session.is_returning && (
+                      <span style={{ 
+                        display: 'inline-block', marginLeft: '0.5rem', padding: '2px 8px',
+                        borderRadius: '12px', fontSize: '0.7rem', fontWeight: '600',
+                        background: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6',
+                        border: '1px solid rgba(59, 130, 246, 0.3)'
+                      }}>🔄 Returning</span>
+                    )}
+                  </div>
                   <div className="community-time" style={{ color: '#f59e0b' }}>
                     Waiting since: {timeAgo(session.started_at)}
                   </div>
@@ -238,7 +248,17 @@ function CounselorDashboard() {
               </div>
               <div className="community-item-content">
                 <div className="community-item-top">
-                  <span className="community-alias">{session.peer_label}</span>
+                  <span className="community-alias">
+                    {session.peer_label}
+                    {session.is_returning && (
+                      <span style={{ 
+                        display: 'inline-block', marginLeft: '0.5rem', padding: '2px 8px',
+                        borderRadius: '12px', fontSize: '0.7rem', fontWeight: '600',
+                        background: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6',
+                        border: '1px solid rgba(59, 130, 246, 0.3)'
+                      }}>🔄 Returning</span>
+                    )}
+                  </span>
                   <span className="community-time">{timeAgo(session.last_message_at || session.started_at)}</span>
                 </div>
                 <div className="community-item-bottom">

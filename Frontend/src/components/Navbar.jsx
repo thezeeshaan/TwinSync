@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, Container, Button, Icon } from 'semantic-ui-react';
+import { Menu, Container, Button, Icon, Dropdown } from 'semantic-ui-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../config/supabaseClient';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
 function Navbar() {
   const { profile, role } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -78,7 +80,11 @@ function Navbar() {
                 </>
               )}
               {role === 'counselor' && (
-                <Menu.Item as={Link} to="/dashboard" active={location.pathname === '/dashboard'} name="Dashboard" onClick={toggleMobileMenu} />
+                <>
+                  <Menu.Item as={Link} to="/checkin" active={location.pathname === '/checkin'} name="Check In" onClick={toggleMobileMenu} />
+                  <Menu.Item as={Link} to="/insights" active={location.pathname === '/insights'} name="Insights" onClick={toggleMobileMenu} />
+                  <Menu.Item as={Link} to="/my-sessions" active={location.pathname === '/my-sessions'} name="My Sessions" onClick={toggleMobileMenu} />
+                </>
               )}
               {role === 'admin' && (
                 <Menu.Item as={Link} to="/admin" active={location.pathname === '/admin'} onClick={toggleMobileMenu}>
@@ -86,14 +92,23 @@ function Navbar() {
                 </Menu.Item>
               )}
               <Menu.Item>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div className="nav-avatar small">
+                    {(profile?.name || 'U').charAt(0).toUpperCase()}
+                  </div>
                   <span>
-                    <span style={{ fontWeight: '600', marginRight: '5px' }}>{profile?.name || 'User'}</span>
+                    <div style={{ fontWeight: '600' }}>{profile?.name || 'User'}</div>
+                    <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>{profile?.phone || 'No Phone'}</div>
                   </span>
-                  <Button inverted color="red" onClick={handleLogout} size="small">
-                    Log Out
-                  </Button>
                 </div>
+              </Menu.Item>
+              <Menu.Item onClick={toggleTheme}>
+                <Icon name={theme === 'dark' ? 'sun' : 'moon'} /> {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+              </Menu.Item>
+              <Menu.Item onClick={handleLogout}>
+                <span style={{ color: '#fca5a5', fontWeight: '600' }}>
+                  <Icon name="sign-out" /> Log Out
+                </span>
               </Menu.Item>
             </Menu>
           </div>
@@ -122,7 +137,11 @@ function Navbar() {
           </>
         )}
         {role === 'counselor' && (
-          <Menu.Item as={Link} to="/dashboard" active={location.pathname === '/dashboard'} name="Dashboard" />
+          <>
+            <Menu.Item as={Link} to="/checkin" active={location.pathname === '/checkin'} name="Check In" />
+            <Menu.Item as={Link} to="/insights" active={location.pathname === '/insights'} name="Insights" />
+            <Menu.Item as={Link} to="/my-sessions" active={location.pathname === '/my-sessions'} name="My Sessions" />
+          </>
         )}
         {role === 'admin' && (
           <Menu.Item as={Link} to="/admin" active={location.pathname === '/admin'}>
@@ -130,16 +149,58 @@ function Navbar() {
           </Menu.Item>
         )}
 
-        {/* Right: User Profile & Actions */}
+        {/* Right: User Profile Dropdown */}
         <Menu.Menu position="right">
-          <Menu.Item>
-            <span style={{ fontWeight: '600', marginRight: '5px' }}>{profile?.name || 'User'}</span>
-            <span style={{ opacity: 0.8, fontSize: '0.9em' }}>({profile?.phone || 'No Phone'})</span>
-          </Menu.Item>
-          <Menu.Item>
-            <Button inverted color="red" onClick={handleLogout} size="small">
-              Log Out
-            </Button>
+          <Menu.Item style={{ paddingRight: 0 }}>
+            <Dropdown
+              trigger={
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div className="nav-avatar">
+                    {(profile?.name || 'U').charAt(0).toUpperCase()}
+                  </div>
+                  <span style={{ fontWeight: '600' }}>{profile?.name || 'User'}</span>
+                  <Icon name="angle down" style={{ margin: 0, opacity: 0.7 }} />
+                </div>
+              }
+              icon={null}
+              pointing="top right"
+              className="premium-nav-dropdown"
+            >
+              <Dropdown.Menu>
+                <Dropdown.Header>
+                  <div style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--text-primary)' }}>
+                    {profile?.name || 'User'}
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                    {profile?.phone || 'No Phone'}
+                  </div>
+                </Dropdown.Header>
+                
+                <Dropdown.Divider />
+                
+                <Dropdown.Item style={{ padding: '0.5rem 1.1rem' }}>
+                  <div className={`nav-role-badge ${role || 'student'}`}>
+                    {role === 'student' ? 'Student' : role === 'admin' ? 'Administrator' : 'Counselor'}
+                  </div>
+                </Dropdown.Item>
+                
+                <Dropdown.Divider />
+                
+                <Dropdown.Item onClick={toggleTheme}>
+                  <Icon name={theme === 'dark' ? 'sun' : 'moon'} color={theme === 'dark' ? 'yellow' : 'grey'} />
+                  <span style={{ color: 'var(--text-primary)' }}>
+                    {theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                  </span>
+                </Dropdown.Item>
+
+                <Dropdown.Divider />
+
+                <Dropdown.Item onClick={handleLogout} className="logout-item">
+                  <Icon name="sign-out" color="red" />
+                  <span style={{ color: '#ef4444', fontWeight: '600' }}>Log Out</span>
+                </Dropdown.Item>
+              </Dropdown.Menu>
+            </Dropdown>
           </Menu.Item>
         </Menu.Menu>
       </Container>

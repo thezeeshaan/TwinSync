@@ -5,7 +5,14 @@ const {
   getPendingCounselors,
   getAllCounselors,
   verifyCounselor,
-  promoteToAdmin
+  promoteToAdmin,
+  createCourse,
+  updateCourse,
+  deleteCourse,
+  createEvent,
+  updateEvent,
+  deleteEvent,
+  getAllEvents
 } = require('../controllers/adminController');
 
 // Middleware: verify token + check admin role
@@ -40,5 +47,15 @@ router.put('/counselors/:counselorId/verify', verifyCounselor);
 
 // Admin promotion
 router.put('/promote', promoteToAdmin);
+
+// Content management — Courses & Events
+router.post('/courses', createCourse);
+router.put('/courses/:id', updateCourse);
+router.delete('/courses/:id', deleteCourse);
+
+router.get('/events', getAllEvents);
+router.post('/events', createEvent);
+router.put('/events/:id', updateEvent);
+router.delete('/events/:id', deleteEvent);
 
 module.exports = router;

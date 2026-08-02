@@ -136,6 +136,7 @@ const getSessions = async (req, res) => {
         cs.ended_at,
         cs.user_id,
         cs.counselor_id,
+        cs.parent_session_id,
         -- Last message preview
         (SELECT content FROM counselor_messages 
          WHERE session_id = cs.id 
@@ -164,7 +165,8 @@ const getSessions = async (req, res) => {
     const sessions = result.rows.map(s => ({
       ...s,
       my_role: s.user_id === userId ? 'student' : 'counselor',
-      peer_label: s.user_id === userId ? 'Counselor' : 'Student'
+      peer_label: s.user_id === userId ? 'Counselor' : 'Student',
+      is_returning: !!s.parent_session_id
     }));
 
     res.json({ sessions });
@@ -411,10 +413,13 @@ const getWaitingSessions = async (req, res) => {
     }
 
     const result = await client.query(
-      `SELECT id AS session_id, started_at
+      `SELECT id AS session_id, started_at, parent_session_id,
+              CASE WHEN parent_session_id IS NOT NULL THEN true ELSE false END AS is_returning
        FROM counselor_sessions
-       WHERE status = 'waiting' AND counselor_id IS NULL
-       ORDER BY started_at ASC`
+       WHERE status = 'waiting' 
+         AND (counselor_id IS NULL OR counselor_id = $1)
+       ORDER BY started_at ASC`,
+      [counselorId]
     );
 
     res.json({ waiting: result.rows });
@@ -447,11 +452,12 @@ const acceptSession = async (req, res) => {
     }
 
     // Claim the waiting session (atomic — prevents race conditions)
+    // Also accepts targeted reconnection sessions (counselor_id = this counselor)
     const result = await client.query(
       `UPDATE counselor_sessions 
        SET counselor_id = $1, status = 'active'
-       WHERE id = $2 AND status = 'waiting' AND counselor_id IS NULL
-       RETURNING id, user_id`,
+       WHERE id = $2 AND status = 'waiting' AND (counselor_id IS NULL OR counselor_id = $1)
+       RETURNING id, user_id, parent_session_id`,
       [counselorId, sessionId]
     );
 
@@ -471,6 +477,95 @@ const acceptSession = async (req, res) => {
   }
 };
 
+/**
+ * POST /api/counselor/reconnect/:sessionId
+ * Student reconnects with the same counselor from a past completed session.
+ * Creates a new session linked to the original via parent_session_id.
+ * If the counselor is available → active. If not → targeted waiting.
+ */
+const reconnectSession = async (req, res) => {
+  const userId = req.authUser.id;
+  const { sessionId } = req.params;
+
+  const client = await db.getClient();
+  try {
+    // 1. Check if student already has a waiting or active session
+    const activeCheck = await client.query(
+      `SELECT id, status FROM counselor_sessions 
+       WHERE user_id = $1 AND status IN ('waiting', 'active')`,
+      [userId]
+    );
+    if (activeCheck.rows.length > 0) {
+      return res.status(400).json({ 
+        error: activeCheck.rows[0].status === 'waiting'
+          ? 'You are already in the waiting queue.'
+          : 'You already have an active counseling session.',
+        session_id: activeCheck.rows[0].id,
+        status: activeCheck.rows[0].status
+      });
+    }
+
+    // 2. Validate the past session belongs to this student and is completed
+    const pastSession = await client.query(
+      `SELECT id, counselor_id FROM counselor_sessions 
+       WHERE id = $1 AND user_id = $2 AND status = 'completed'`,
+      [sessionId, userId]
+    );
+    if (pastSession.rows.length === 0) {
+      return res.status(404).json({ error: 'Past session not found or not eligible for reconnection.' });
+    }
+
+    const counselorId = pastSession.rows[0].counselor_id;
+
+    // 3. Check if the original counselor is still verified and available
+    const counselorCheck = await client.query(
+      `SELECT id, is_available FROM counselors 
+       WHERE id = $1 AND verification_status = 'verified' AND deleted_at IS NULL`,
+      [counselorId]
+    );
+    if (counselorCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'The counselor from your previous session is no longer available on the platform.' });
+    }
+
+    const isAvailable = counselorCheck.rows[0].is_available;
+
+    if (isAvailable) {
+      // Instant match — counselor is online
+      const newSession = await client.query(
+        `INSERT INTO counselor_sessions (user_id, counselor_id, status, parent_session_id)
+         VALUES ($1, $2, 'active', $3) RETURNING id, status, started_at`,
+        [userId, counselorId, sessionId]
+      );
+
+      return res.status(201).json({
+        session_id: newSession.rows[0].id,
+        status: 'active',
+        started_at: newSession.rows[0].started_at,
+        message: 'Reconnected with your previous counselor. Your identity remains hidden.'
+      });
+    }
+
+    // Counselor not online — targeted waiting queue
+    const newSession = await client.query(
+      `INSERT INTO counselor_sessions (user_id, counselor_id, status, parent_session_id)
+       VALUES ($1, $2, 'waiting', $3) RETURNING id, status, started_at`,
+      [userId, counselorId, sessionId]
+    );
+
+    res.status(201).json({
+      session_id: newSession.rows[0].id,
+      status: 'waiting',
+      started_at: newSession.rows[0].started_at,
+      message: 'Your previous counselor is not online right now. You have been placed in their personal queue.'
+    });
+  } catch (error) {
+    console.error('Error reconnecting session:', error);
+    res.status(500).json({ error: 'Failed to reconnect session.' });
+  } finally {
+    client.release();
+  }
+};
+
 module.exports = {
   requestSession,
   cancelSession,
@@ -481,5 +576,6 @@ module.exports = {
   toggleAvailability,
   getCounselorProfile,
   getWaitingSessions,
-  acceptSession
+  acceptSession,
+  reconnectSession
 };
