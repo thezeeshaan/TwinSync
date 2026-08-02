@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Container, Icon, Loader, Modal, Button } from 'semantic-ui-react';
 import Navbar from '../components/Navbar';
-import CounselorDashboard from '../components/CounselorDashboard';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../config/supabaseClient';
 

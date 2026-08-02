@@ -53,7 +53,7 @@ function AdminPanel() {
         fetch(`${API_URL}/api/admin/counselors/pending`, { headers }),
         fetch(`${API_URL}/api/admin/counselors/all`, { headers }),
         fetch(`${API_URL}/api/dashboard/courses`, { headers }),
-        fetch(`${API_URL}/api/dashboard/events`, { headers })
+        fetch(`${API_URL}/api/admin/events`, { headers })
       ]);
 
       if (pendingRes.ok) {

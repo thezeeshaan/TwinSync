@@ -452,11 +452,12 @@ const acceptSession = async (req, res) => {
     }
 
     // Claim the waiting session (atomic — prevents race conditions)
+    // Also accepts targeted reconnection sessions (counselor_id = this counselor)
     const result = await client.query(
       `UPDATE counselor_sessions 
        SET counselor_id = $1, status = 'active'
-       WHERE id = $2 AND status = 'waiting' AND counselor_id IS NULL
-       RETURNING id, user_id`,
+       WHERE id = $2 AND status = 'waiting' AND (counselor_id IS NULL OR counselor_id = $1)
+       RETURNING id, user_id, parent_session_id`,
       [counselorId, sessionId]
     );
 

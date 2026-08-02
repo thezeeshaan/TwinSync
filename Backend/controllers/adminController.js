@@ -236,15 +236,19 @@ const createCourse = async (req, res) => {
  * Delete a mental health course.
  */
 const deleteCourse = async (req, res) => {
+  const adminId = req.authUser.id;
   const { id } = req.params;
   const client = await db.getClient();
   try {
     const result = await client.query(
-      `DELETE FROM mental_health_courses WHERE id = $1 RETURNING id, title`,
-      [id]
+      `DELETE FROM mental_health_courses mhc
+       USING users u
+       WHERE mhc.id = $1 AND u.id = $2 AND mhc.institute_id = u.institute_id
+       RETURNING mhc.id, mhc.title`,
+      [id, adminId]
     );
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Course not found.' });
+      return res.status(404).json({ error: 'Course not found or not from your institute.' });
     }
     res.json({ message: 'Course deleted.', course: result.rows[0] });
   } catch (error) {
@@ -261,6 +265,7 @@ const deleteCourse = async (req, res) => {
  * Body: { title, description, content_url, thumbnail_url }
  */
 const updateCourse = async (req, res) => {
+  const adminId = req.authUser.id;
   const { id } = req.params;
   const { title, description, content_url, thumbnail_url } = req.body;
 
@@ -271,15 +276,16 @@ const updateCourse = async (req, res) => {
   const client = await db.getClient();
   try {
     const result = await client.query(
-      `UPDATE mental_health_courses 
+      `UPDATE mental_health_courses mhc
        SET title = $1, description = $2, content_url = $3, thumbnail_url = $4
-       WHERE id = $5
-       RETURNING id, title`,
-      [title.trim(), description?.trim() || null, content_url.trim(), thumbnail_url?.trim() || null, id]
+       FROM users u
+       WHERE mhc.id = $5 AND u.id = $6 AND mhc.institute_id = u.institute_id
+       RETURNING mhc.id, mhc.title`,
+      [title.trim(), description?.trim() || null, content_url.trim(), thumbnail_url?.trim() || null, id, adminId]
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Course not found.' });
+      return res.status(404).json({ error: 'Course not found or not from your institute.' });
     }
 
     res.json({ message: 'Course updated successfully.', course: result.rows[0] });
@@ -335,15 +341,19 @@ const createEvent = async (req, res) => {
  * Delete a campus event.
  */
 const deleteEvent = async (req, res) => {
+  const adminId = req.authUser.id;
   const { id } = req.params;
   const client = await db.getClient();
   try {
     const result = await client.query(
-      `DELETE FROM campus_events WHERE id = $1 RETURNING id, title`,
-      [id]
+      `DELETE FROM campus_events ce
+       USING users u
+       WHERE ce.id = $1 AND u.id = $2 AND ce.institute_id = u.institute_id
+       RETURNING ce.id, ce.title`,
+      [id, adminId]
     );
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Event not found.' });
+      return res.status(404).json({ error: 'Event not found or not from your institute.' });
     }
     res.json({ message: 'Event deleted.', event: result.rows[0] });
   } catch (error) {
@@ -360,6 +370,7 @@ const deleteEvent = async (req, res) => {
  * Body: { title, description, event_date, location }
  */
 const updateEvent = async (req, res) => {
+  const adminId = req.authUser.id;
   const { id } = req.params;
   const { title, description, event_date, location } = req.body;
 
@@ -370,21 +381,47 @@ const updateEvent = async (req, res) => {
   const client = await db.getClient();
   try {
     const result = await client.query(
-      `UPDATE campus_events 
+      `UPDATE campus_events ce
        SET title = $1, description = $2, event_date = $3, location = $4
-       WHERE id = $5
-       RETURNING id, title`,
-      [title.trim(), description?.trim() || null, event_date, location?.trim() || null, id]
+       FROM users u
+       WHERE ce.id = $5 AND u.id = $6 AND ce.institute_id = u.institute_id
+       RETURNING ce.id, ce.title`,
+      [title.trim(), description?.trim() || null, event_date, location?.trim() || null, id, adminId]
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Event not found.' });
+      return res.status(404).json({ error: 'Event not found or not from your institute.' });
     }
 
     res.json({ message: 'Event updated successfully.', event: result.rows[0] });
   } catch (error) {
     console.error('Error updating event:', error);
     res.status(500).json({ error: 'Failed to update event.' });
+  } finally {
+    client.release();
+  }
+};
+
+/**
+ * GET /api/admin/events
+ * Returns ALL campus events (including past) for admin management.
+ */
+const getAllEvents = async (req, res) => {
+  const adminId = req.authUser.id;
+  const client = await db.getClient();
+  try {
+    const result = await client.query(
+      `SELECT ce.id, ce.title, ce.description, ce.event_date, ce.location, ce.created_at
+       FROM campus_events ce
+       JOIN users u ON ce.institute_id = u.institute_id
+       WHERE u.id = $1
+       ORDER BY ce.event_date DESC`,
+      [adminId]
+    );
+    res.json({ events: result.rows });
+  } catch (error) {
+    console.error('Error fetching all events for admin:', error);
+    res.status(500).json({ error: 'Failed to fetch events' });
   } finally {
     client.release();
   }
@@ -400,6 +437,7 @@ module.exports = {
   deleteCourse,
   createEvent,
   updateEvent,
-  deleteEvent
+  deleteEvent,
+  getAllEvents
 };
 

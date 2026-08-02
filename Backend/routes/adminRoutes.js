@@ -11,7 +11,8 @@ const {
   deleteCourse,
   createEvent,
   updateEvent,
-  deleteEvent
+  deleteEvent,
+  getAllEvents
 } = require('../controllers/adminController');
 
 // Middleware: verify token + check admin role
@@ -52,6 +53,7 @@ router.post('/courses', createCourse);
 router.put('/courses/:id', updateCourse);
 router.delete('/courses/:id', deleteCourse);
 
+router.get('/events', getAllEvents);
 router.post('/events', createEvent);
 router.put('/events/:id', updateEvent);
 router.delete('/events/:id', deleteEvent);
